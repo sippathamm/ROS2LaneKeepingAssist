@@ -1,0 +1,22 @@
+microcontroller:
+  idmcu: 1 # id of mcu 
+  namespace: "f1tenth_mega" # namespace
+  generate_library_Path: "arduino-1.8.15/libraries"  # path for generate library
+  connection:
+    type: "UART"   # ["UART","UDP"] support 2 mode 1.Serial UART 2.Wifi UDP (Only arduino and esp32)
+    serial_port: "/dev/ttyACM0"  # for Serial UART example "/dev/ttyUSB0"
+    baudrate: 115200  # for UART
+    ip_address_mcu: ""  # for UDP example "192.168.1.xx"
+    udp_port_mcu: 8888  # for UDP
+
+
+ros: # setup ros is reference from microcontroller example publisher is mean microcontroller publish to ros network
+  publisher:  [[1,"mcu_state","std_msgs/Bool.msg"],[2,"vel_rpt","xicro_interfaces/AckermanDrive.msg"],[3,"encoder_rpt","xicro_interfaces/EncoderRpt.msg"]]
+  subscriber: [[1,"led_state","std_msgs/Bool.msg"],[2,"cmd_vel","geometry_msgs/Twist.msg"]]
+  srv_client: [                           ]
+  srv_server: [                           ]
+  action_client: [                        ]
+  action_server: [                        ]
+
+  # publisher:  [[1,"mcu_state","std_msgs/Bool.msg"],[2,"vel_rpt","ackerman_msgs/AcKermanDrive.msg"],[3,"analog_rpt","std_msgs/Int16.msg"]]
+    # subscriber: [[1,"led_state","std_msgs/Bool.msg"],[2,"cmd_vel","geometry_msgs/Twist.msg"]]

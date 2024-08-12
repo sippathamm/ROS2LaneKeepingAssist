@@ -1,0 +1,9 @@
+steering_predictor:
+  ros__parameters:
+      cmd_steering_topic: "cmd_servo"
+      stream_topic: "raw_stream"
+      turn_right_steering_angle_rad: -0.27
+      turn_left_steering_angle_rad: 0.3
+      turn_right_cmd_steering: -1000
+      turn_left_cmd_steering: 1000
+      verbose: 0
