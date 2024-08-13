@@ -9,21 +9,7 @@ from std_msgs.msg import Int16
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import (
-    Input,
-    Rescaling,
-    Conv2D,
-    BatchNormalization,
-    MaxPooling2D,
-    MaxPool2D,
-    concatenate,
-    Dropout,
-    SpatialDropout2D,
-    Flatten,
-    Dense,
-    Activation
-)
+from tensorflow.keras.models import Model, load_model
 import numpy as np
 import cv2
 import os
@@ -57,7 +43,8 @@ class SteeringPredictor(Node):
                                                             'share', 'images', 'steering-wheel-14-256.png'),
                                                cv2.IMREAD_UNCHANGED)
         self.steering_wheel_image = cv2.resize(self.steering_wheel_image, (100, 100))
-        self.model = self.build_model(input_shape=(128, 64, 3))
+        self.model = load_model(os.path.join(get_package_share_directory('lane_keeping_assist'),
+                                             'share', 'models', 'steering_predictor.keras'))
         self.model.summary()
 
         self.get_logger().info('Initialized without any errors. Looking for stream...')
@@ -65,10 +52,10 @@ class SteeringPredictor(Node):
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         frame = cv2.resize(frame, (512, 256))
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         background = frame.copy()
         cutoff_frame = frame[136:, :]
-        resized_frame = cv2.resize(cutoff_frame, (128, 64))
+        yuv_frame = cv2.cvtColor(cutoff_frame, cv2.COLOR_BGR2YUV)
+        resized_frame = cv2.resize(yuv_frame, (128, 64))
 
         X = resized_frame.reshape(1, 64, 128, 3)
         steering_angle_rad = self.model.predict(x=X, verbose=self.VERBOSE)[0]

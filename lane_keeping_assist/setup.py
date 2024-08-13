@@ -16,6 +16,7 @@ setup(
         (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml')),
         (os.path.join('share', package_name, 'share', 'images'), glob.glob('share/images/*.png')),
         (os.path.join('share', package_name, 'share', 'test_videos'), glob.glob('share/test_videos/*.mp4')),
+        (os.path.join('share', package_name, 'share', 'models'), ['share/models/steering_predictor.keras']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
