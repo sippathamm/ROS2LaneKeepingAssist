@@ -16,7 +16,8 @@ setup(
         (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml')),
         (os.path.join('share', package_name, 'share', 'images'), glob.glob('share/images/*.png')),
         (os.path.join('share', package_name, 'share', 'test_videos'), glob.glob('share/test_videos/*.mp4')),
-        (os.path.join('share', package_name, 'share', 'models'), ['share/models/steering_predictor.keras']),
+        (os.path.join('share', package_name, 'share', 'models'), ['share/models/steering_predictor.keras', 'share/models/steering_predictor_onnx.onnx']),
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
