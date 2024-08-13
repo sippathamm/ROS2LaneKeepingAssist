@@ -7,7 +7,7 @@ package_name = 'lane_keeping_assist'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
+    packages=[package_name, package_name + '/utils'],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -16,8 +16,8 @@ setup(
         (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml')),
         (os.path.join('share', package_name, 'share', 'images'), glob.glob('share/images/*.png')),
         (os.path.join('share', package_name, 'share', 'test_videos'), glob.glob('share/test_videos/*.mp4')),
-        (os.path.join('share', package_name, 'share', 'models'), ['share/models/steering_predictor.keras', 'share/models/steering_predictor_onnx.onnx']),
-
+        (os.path.join('share', package_name, 'share', 'models'), ['share/models/steering_predictor.keras',
+                                                                  'share/models/steering_predictor_onnx.onnx']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
