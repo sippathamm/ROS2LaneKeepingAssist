@@ -16,7 +16,7 @@ def generate_launch_description():
             package='stream_publisher',
             executable='from_camera',
             parameters=[{
-                'stream_source_index': 0,
+                'stream_source_index': 0,  # ---> Change to your source index
                 'silence': True
             }]
         ),
