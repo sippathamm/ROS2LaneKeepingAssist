@@ -27,13 +27,15 @@ class SteeringPredictor(Node):
         self.declare_parameter('turn_left_steering_angle_rad', 0.3)
         self.declare_parameter('turn_right_cmd_steering', -1000)
         self.declare_parameter('turn_left_cmd_steering', 1000)
-
+        self.declare_parameter('gain', 1.0)
+        
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
         self.STREAM_TOPIC = self.get_parameter('stream_topic').get_parameter_value().string_value
         self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter('turn_right_steering_angle_rad').get_parameter_value().double_value
         self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter('turn_left_steering_angle_rad').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
         self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().integer_value
+        self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
         self.cmd_steering_publisher = self.create_publisher(Int16, self.CMD_STEERING_TOPIC, 10)
         self.steering_debug_publisher = self.create_publisher(Image, 'steering_debug', 10)
@@ -66,7 +68,7 @@ class SteeringPredictor(Node):
         start_time = time.perf_counter_ns()  # Start time in nanoseconds
         y_pred = self.session.run(['steering_angle_rad'], {'input_1': ortvalue})[0]
         time_taken = (time.perf_counter_ns() - start_time) / 1_000_000  # Convert nanoseconds to milliseconds
-        y_pred = y_pred.ravel()[0]
+        y_pred = y_pred.ravel()[0] * self.GAIN
         steering_angle_rad = min(max(y_pred, self.TURN_RIGHT_STEERING_ANGLE_RAD),
                                  self.TURN_LEFT_STEERING_ANGLE_RAD)
 
@@ -75,6 +77,7 @@ class SteeringPredictor(Node):
                                       (self.TURN_RIGHT_CMD_STEERING - self.TURN_LEFT_CMD_STEERING) /
                                       (self.TURN_RIGHT_STEERING_ANGLE_RAD - self.TURN_LEFT_STEERING_ANGLE_RAD) +
                                       self.TURN_LEFT_CMD_STEERING)
+        self.cmd_steering_publisher.publish(cmd_steering_angle)
 
         self.get_logger().info('\n'
                                '       > Steering CMD: %d\n'
@@ -84,7 +87,6 @@ class SteeringPredictor(Node):
                                    steering_angle_rad,
                                    time_taken)
                                )
-        self.cmd_steering_publisher.publish(cmd_steering_angle)
 
         (h, w) = self.steering_wheel_image.shape[:2]
         center = (w // 2, h // 2)
@@ -94,6 +96,7 @@ class SteeringPredictor(Node):
         add_transparent_image(background, rotated_steering_wheel, 30, 30)
         output_image = self.bridge.cv2_to_imgmsg(background, 'bgr8')
         self.steering_debug_publisher.publish(output_image)
+
 
 def main(args=None):
     rclpy.init(args=args)

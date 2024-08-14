@@ -6,3 +6,4 @@ steering_predictor:
       turn_left_steering_angle_rad: 0.3
       turn_right_cmd_steering: -1000
       turn_left_cmd_steering: 1000
+      gain: 1.0
