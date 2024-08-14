@@ -48,7 +48,7 @@ class SteeringPredictor(Node):
 
         self.session = onnxruntime.InferenceSession(
             os.path.join(get_package_share_directory('lane_keeping_assist'),
-                         'share', 'models', 'steering_predictor_onnx.onnx'),
+                         'share', 'models', 'model_onnx_rgb8.onnx'),
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
@@ -59,7 +59,7 @@ class SteeringPredictor(Node):
         frame = cv2.resize(frame, (512, 256))
         background = frame.copy()
         cutoff_frame = frame[136:, :]
-        yuv_frame = cv2.cvtColor(cutoff_frame, cv2.COLOR_BGR2YUV)
+        yuv_frame = cv2.cvtColor(cutoff_frame, cv2.COLOR_BGR2RGB)
         resized_frame = cv2.resize(yuv_frame, (128, 64))
 
         X = resized_frame.reshape(1, 64, 128, 3)
