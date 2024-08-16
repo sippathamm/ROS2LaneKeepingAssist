@@ -55,12 +55,11 @@ class SteeringPredictor(Node):
         self.get_logger().info('> Initialized without any errors. Looking for stream...')
 
     def image_callback(self, msg):
-        frame = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+        frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
         frame = cv2.resize(frame, (512, 256))
         background = frame.copy()
         cutoff_frame = frame[136:, :]
-        yuv_frame = cv2.cvtColor(cutoff_frame, cv2.COLOR_BGR2RGB)
-        resized_frame = cv2.resize(yuv_frame, (128, 64))
+        resized_frame = cv2.resize(cutoff_frame, (128, 64))
 
         X = resized_frame.reshape(1, 64, 128, 3)
         ortvalue = onnxruntime.OrtValue.ortvalue_from_numpy(X.astype('float32'))
