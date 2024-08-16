@@ -1,0 +1,26 @@
+image_width: 640
+image_height: 480
+camera_name: realsense
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [379.76452,   0.     , 315.06333,
+           0.     , 380.3036 , 246.80481,
+           0.     ,   0.     ,   1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.048012, 0.038993, -0.001097, -0.000562, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [378.66746,   0.     , 314.78963,   0.     ,
+           0.     , 378.4936 , 245.85021,   0.     ,
+           0.     ,   0.     ,   1.     ,   0.     ]
