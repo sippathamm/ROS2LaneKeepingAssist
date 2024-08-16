@@ -22,7 +22,7 @@ class SteeringPredictor(Node):
         super().__init__('steering_predictor')
 
         self.declare_parameter('cmd_steering_topic', 'cmd_servo')
-        self.declare_parameter('stream_topic', 'raw_stream')
+        self.declare_parameter('image_topic', 'image_raw')
         self.declare_parameter('turn_right_steering_angle_rad', -0.27)
         self.declare_parameter('turn_left_steering_angle_rad', 0.3)
         self.declare_parameter('turn_right_cmd_steering', -1000)
@@ -30,7 +30,7 @@ class SteeringPredictor(Node):
         self.declare_parameter('gain', 1.0)
         
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
-        self.STREAM_TOPIC = self.get_parameter('stream_topic').get_parameter_value().string_value
+        self.STREAM_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
         self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter('turn_right_steering_angle_rad').get_parameter_value().double_value
         self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter('turn_left_steering_angle_rad').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
