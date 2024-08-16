@@ -12,14 +12,14 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        Node(
-            package='stream_publisher',
-            executable='from_camera',
-            parameters=[{
-                'stream_source_index': 0,  # ---> Change to your source index
-                'silence': True
-            }]
-        ),
+	Node(
+	    package='image_transport',
+	    executable='republish',
+	    arguments=['compressed', 'raw'],
+	    remappings=[
+		('in/compressed', 'realsense_camera/image_compressed'),
+		('out', 'realsense_camera/image_uncompressed')]
+	),
         Node(
             package='lane_keeping_assist',
             executable='steering_predictor',
