@@ -30,7 +30,7 @@ class SteeringPredictor(Node):
         self.declare_parameter('gain', 1.0)
         
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
-        self.STREAM_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
+        self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
         self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter('turn_right_steering_angle_rad').get_parameter_value().double_value
         self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter('turn_left_steering_angle_rad').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
@@ -38,8 +38,9 @@ class SteeringPredictor(Node):
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
         self.cmd_steering_publisher = self.create_publisher(Int16, self.CMD_STEERING_TOPIC, 10)
+        self.cmd_speed_publisher = self.create_publisher(Int16, 'cmd_throttle', 10)
         self.steering_debug_publisher = self.create_publisher(Image, 'steering_debug', 10)
-        self.stream_subscriber = self.create_subscription(Image, self.STREAM_TOPIC, self.image_callback, 10)
+        self.image_subscriber = self.create_subscription(Image, self.IMAGE_TOPIC, self.image_callback, 10)
         self.bridge = CvBridge()
         self.steering_wheel_image = cv2.imread(os.path.join(get_package_share_directory('lane_keeping_assist'),
                                                             'share', 'images', 'steering-wheel-14-256.png'),
@@ -52,7 +53,7 @@ class SteeringPredictor(Node):
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
-        self.get_logger().info('> Initialized without any errors. Looking for stream...')
+        self.get_logger().info('> Initialized without any errors. Waiting for image...')
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
@@ -78,11 +79,19 @@ class SteeringPredictor(Node):
                                       self.TURN_LEFT_CMD_STEERING)
         self.cmd_steering_publisher.publish(cmd_steering_angle)
 
+        cmd_speed = Int16()
+        k = -1 if steering_angle_rad > 0 else 1
+        cmd_speed.data = int((k * 1.67 * steering_angle_rad + 1) * 100)
+        cmd_speed.data = min(max(cmd_speed.data, 50), 100)
+        self.cmd_speed_publisher.publish(cmd_speed)
+
         self.get_logger().info('\n'
                                '       > Steering CMD: %d\n'
+                               '       > Speed CMD: %d\n'
                                '       > Steering angle [rad]: %f\n'
                                '       > Inference time [ms]: %f' % (
                                    cmd_steering_angle.data,
+                                   cmd_speed.data,
                                    steering_angle_rad,
                                    time_taken)
                                )
