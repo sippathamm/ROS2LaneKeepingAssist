@@ -23,7 +23,7 @@ class SteeringPredictor(Node):
 
         self.declare_parameter('cmd_steering_topic', 'cmd_servo')
         self.declare_parameter('image_topic', 'image_raw')
-        self.declare_parameter('turn_right_steering_angle_rad', -0.27)
+        self.declare_parameter('turn_right_steering_angle_rad', -0.3)
         self.declare_parameter('turn_left_steering_angle_rad', 0.3)
         self.declare_parameter('turn_right_cmd_steering', -1000)
         self.declare_parameter('turn_left_cmd_steering', 1000)
@@ -80,9 +80,10 @@ class SteeringPredictor(Node):
         self.cmd_steering_publisher.publish(cmd_steering_angle)
 
         cmd_speed = Int16()
-        k = -1 if steering_angle_rad > 0 else 1
-        cmd_speed.data = int((k * 1.67 * steering_angle_rad + 1) * 100)
-        cmd_speed.data = min(max(cmd_speed.data, 50), 100)
+        MAX = 100
+        MIN = 70
+        k = 1 if steering_angle_rad < 0 else -1
+        cmd_speed.data = int(k * (MAX - MIN) * steering_angle_rad / 0.3 + MAX)
         self.cmd_speed_publisher.publish(cmd_speed)
 
         self.get_logger().info('\n'
