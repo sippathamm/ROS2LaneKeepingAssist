@@ -28,7 +28,7 @@ setup(
     entry_points={
         'console_scripts': [
             'steering_predictor = lane_keeping_assist.steering_predictor:main',
-            'test_video = lane_keeping_assist.test_video:main',
+            'test_video_publisher = lane_keeping_assist.test_video_publisher:main',
         ],
     },
 )

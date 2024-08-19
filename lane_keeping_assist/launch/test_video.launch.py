@@ -13,17 +13,17 @@ def generate_launch_description():
 
     return LaunchDescription([
         Node(
-            package='image_transport',
-            executable='republish',
-            arguments=['compressed', 'raw'],
-            remappings=[
-                ('in/compressed', 'realsense_camera/image_compressed'),
-                ('out', 'realsense_camera/image_uncompressed')]
+            package='lane_keeping_assist',
+            executable='test_video_publisher',
+            parameters=[params],
         ),
         Node(
             package='lane_keeping_assist',
             executable='steering_predictor',
-            parameters=[params],
+            parameters=[params,
+                        {
+                            'image_topic': 'video_raw'
+                        }],
             output='screen',
         )
     ])
