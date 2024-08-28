@@ -14,16 +14,16 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='lane_keeping_assist',
-            executable='test_video_publisher',
-            parameters=[params],
-        ),
-        Node(
-            package='lane_keeping_assist',
             executable='steering_predictor',
             parameters=[params,
                         {
                             'image_topic': 'video_raw'
                         }],
-            output='screen',
+            output='screen'
+        ),
+        Node(
+            package='lane_keeping_assist',
+            executable='test_video_publisher',
+            parameters=[params]
         )
     ])

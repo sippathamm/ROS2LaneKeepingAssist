@@ -56,7 +56,7 @@ class SteeringPredictor(Node):
 
         self.session = onnxruntime.InferenceSession(
             os.path.join(get_package_share_directory('lane_keeping_assist'),
-                         'share', 'models', 'steering_predictor_v1.0.12_onnx_128x64_rgb8.onnx'),
+                         'share', 'models', 'steering_predictor_v1.0.12_dev_onnx_128x64_rgb8.onnx'),
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
@@ -95,7 +95,7 @@ class SteeringPredictor(Node):
         self.get_logger().info('\n'
                                '       > Steering CMD: %d\n'
                                '       > Speed CMD: %d\n'
-                               '       > Steering angle [rad]: %f\n'
+                               '       > Steering angle: %f\n'
                                '       > Inference time [ms]: %f' % (
                                    cmd_steering_angle.data,
                                    cmd_speed.data,
@@ -105,10 +105,10 @@ class SteeringPredictor(Node):
 
         (h, w) = self.steering_wheel_image.shape[:2]
         center = (w // 2, h // 2)
-        rotation_matrix = cv2.getRotationMatrix2D(center, np.rad2deg(normalized_steering_angle) * 1.0, 1.0)
+        rotation_matrix = cv2.getRotationMatrix2D(center, np.rad2deg(normalized_steering_angle) * 0.5, 1.0)
         rotated_steering_wheel = cv2.warpAffine(self.steering_wheel_image, rotation_matrix, (w, h),
                                                 flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT)
-        cv2.putText(background, 'pred steering angle: ' + str(normalized_steering_angle), (30, 190),
+        cv2.putText(background, 'Steering angle: ' + str(normalized_steering_angle), (30, 150),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
         add_transparent_image(background, rotated_steering_wheel, 30, 30)
 
