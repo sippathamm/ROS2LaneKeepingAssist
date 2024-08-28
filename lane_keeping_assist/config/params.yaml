@@ -1,7 +1,10 @@
 steering_predictor:
   ros__parameters:
       cmd_steering_topic: "cmd_servo"
+      cmd_speed_topic: "cmd_throttle"
       image_topic: "realsense_camera/image_uncompressed"
+      max_speed: 100
+      min_speed: 80
       turn_right_steering_angle_rad: -1.0
       turn_left_steering_angle_rad: 1.0
       turn_right_cmd_steering: -1000

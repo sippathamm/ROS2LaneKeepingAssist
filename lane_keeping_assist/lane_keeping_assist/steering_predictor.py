@@ -5,7 +5,7 @@ Date: 06.08.2024
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Bool
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
@@ -22,7 +22,10 @@ class SteeringPredictor(Node):
         super().__init__('steering_predictor')
 
         self.declare_parameter('cmd_steering_topic', 'cmd_servo')
+        self.declare_parameter('cmd_speed_topic', 'cmd_throttle')
         self.declare_parameter('image_topic', 'image_raw')
+        self.declare_parameter('max_speed', 100)
+        self.declare_parameter('min_speed', 80)
         self.declare_parameter('turn_right_steering_angle_rad', -1.0)
         self.declare_parameter('turn_left_steering_angle_rad', 1.0)
         self.declare_parameter('turn_right_cmd_steering', -1000)
@@ -30,19 +33,21 @@ class SteeringPredictor(Node):
         self.declare_parameter('gain', 1.0)
 
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
+        self.CMD_SPEED_TOPIC = self.get_parameter('cmd_speed_topic').get_parameter_value().string_value
         self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
-        self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter(
-            'turn_right_steering_angle_rad').get_parameter_value().double_value
-        self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter(
-            'turn_left_steering_angle_rad').get_parameter_value().double_value
+        self.MAX_SPEED = self.get_parameter('max_speed').get_parameter_value().interger_value
+        self.MIN_SPEED = self.get_parameter('min_speed').get_parameter_value().interger_value
+        self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter('turn_right_steering_angle_rad').get_parameter_value().double_value
+        self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter('turn_left_steering_angle_rad').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
         self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().integer_value
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
         self.cmd_steering_publisher = self.create_publisher(Int16, self.CMD_STEERING_TOPIC, 10)
-        self.cmd_speed_publisher = self.create_publisher(Int16, 'cmd_throttle', 10)
+        self.cmd_speed_publisher = self.create_publisher(Int16, self.CMD_SPEED_TOPIC, 10)
         self.steering_debug_publisher = self.create_publisher(Image, 'steering_debug', 10)
         self.image_subscriber = self.create_subscription(Image, self.IMAGE_TOPIC, self.image_callback, 10)
+
         self.bridge = CvBridge()
         self.steering_wheel_image = cv2.imread(os.path.join(get_package_share_directory('lane_keeping_assist'),
                                                             'share', 'images', 'steering-wheel-14-256.png'),
@@ -83,10 +88,8 @@ class SteeringPredictor(Node):
         self.cmd_steering_publisher.publish(cmd_steering_angle)
 
         cmd_speed = Int16()
-        MAX = 100
-        MIN = 80
         k = 1 if normalized_steering_angle < 0 else -1
-        cmd_speed.data = int(k * (MAX - MIN) * normalized_steering_angle / 1.0 + MAX)
+        cmd_speed.data = int(k * (self.MAX_SPEED - self.MIN_SPEED) * normalized_steering_angle / 1.0 + self.MAX_SPEED)
         self.cmd_speed_publisher.publish(cmd_speed)
 
         self.get_logger().info('\n'
