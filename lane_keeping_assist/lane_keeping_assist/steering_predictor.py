@@ -35,8 +35,8 @@ class SteeringPredictor(Node):
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
         self.CMD_SPEED_TOPIC = self.get_parameter('cmd_speed_topic').get_parameter_value().string_value
         self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
-        self.MAX_SPEED = self.get_parameter('max_speed').get_parameter_value().interger_value
-        self.MIN_SPEED = self.get_parameter('min_speed').get_parameter_value().interger_value
+        self.MAX_SPEED = self.get_parameter('max_speed').get_parameter_value().integer_value
+        self.MIN_SPEED = self.get_parameter('min_speed').get_parameter_value().integer_value
         self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter('turn_right_steering_angle_rad').get_parameter_value().double_value
         self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter('turn_left_steering_angle_rad').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
