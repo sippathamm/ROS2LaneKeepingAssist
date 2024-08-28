@@ -56,7 +56,7 @@ class SteeringPredictor(Node):
 
         self.session = onnxruntime.InferenceSession(
             os.path.join(get_package_share_directory('lane_keeping_assist'),
-                         'share', 'models', 'steering_predictor_v1.1.16_dev_onnx_128x64_rgb8.onnx'),
+                         'share', 'models', 'steering_predictor_v1.0.12_onnx_128x64_rgb8.onnx'),
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
