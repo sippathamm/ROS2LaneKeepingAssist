@@ -23,16 +23,18 @@ class SteeringPredictor(Node):
 
         self.declare_parameter('cmd_steering_topic', 'cmd_servo')
         self.declare_parameter('image_topic', 'image_raw')
-        self.declare_parameter('turn_right_steering_angle_rad', -0.3)
-        self.declare_parameter('turn_left_steering_angle_rad', 0.3)
+        self.declare_parameter('turn_right_steering_angle_rad', -1.0)
+        self.declare_parameter('turn_left_steering_angle_rad', 1.0)
         self.declare_parameter('turn_right_cmd_steering', -1000)
         self.declare_parameter('turn_left_cmd_steering', 1000)
         self.declare_parameter('gain', 1.0)
-        
+
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
         self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
-        self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter('turn_right_steering_angle_rad').get_parameter_value().double_value
-        self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter('turn_left_steering_angle_rad').get_parameter_value().double_value
+        self.TURN_RIGHT_STEERING_ANGLE_RAD = self.get_parameter(
+            'turn_right_steering_angle_rad').get_parameter_value().double_value
+        self.TURN_LEFT_STEERING_ANGLE_RAD = self.get_parameter(
+            'turn_left_steering_angle_rad').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
         self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().integer_value
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
@@ -49,7 +51,7 @@ class SteeringPredictor(Node):
 
         self.session = onnxruntime.InferenceSession(
             os.path.join(get_package_share_directory('lane_keeping_assist'),
-                         'share', 'models', 'model_onnx_rgb8.onnx'),
+                         'share', 'models', 'steering_predictor_v1.1.16_onnx_128x64_rgb8.onnx'),
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
@@ -57,23 +59,24 @@ class SteeringPredictor(Node):
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
-        frame = cv2.resize(frame, (512, 256))
         background = frame.copy()
-        cutoff_frame = frame[136:, :]
-        resized_frame = cv2.resize(cutoff_frame, (128, 64))
+        roi_frame = frame[int(frame.shape[0] * 0.390625):, :]
+        resized_frame = cv2.resize(roi_frame, (128, 64))
 
-        X = resized_frame.reshape(1, 64, 128, 3)
+        X = np.expand_dims(resized_frame, axis=0)
         ortvalue = onnxruntime.OrtValue.ortvalue_from_numpy(X.astype('float32'))
 
         start_time = time.perf_counter_ns()  # Start time in nanoseconds
-        y_pred = self.session.run(['steering_angle_rad'], {'input_1': ortvalue})[0]
+        y_pred = self.session.run(['steering_angle'], {'input_1': ortvalue})[0]
         time_taken = (time.perf_counter_ns() - start_time) / 1_000_000  # Convert nanoseconds to milliseconds
+
         y_pred = y_pred.ravel()[0] * self.GAIN
-        steering_angle_rad = min(max(y_pred, self.TURN_RIGHT_STEERING_ANGLE_RAD),
-                                 self.TURN_LEFT_STEERING_ANGLE_RAD)
+        normalized_steering_angle = round(y_pred, 3)
+        normalized_steering_angle = min(max(normalized_steering_angle, self.TURN_RIGHT_STEERING_ANGLE_RAD),
+                                        self.TURN_LEFT_STEERING_ANGLE_RAD)
 
         cmd_steering_angle = Int16()
-        cmd_steering_angle.data = int((steering_angle_rad - self.TURN_LEFT_STEERING_ANGLE_RAD) *
+        cmd_steering_angle.data = int((normalized_steering_angle - self.TURN_LEFT_STEERING_ANGLE_RAD) *
                                       (self.TURN_RIGHT_CMD_STEERING - self.TURN_LEFT_CMD_STEERING) /
                                       (self.TURN_RIGHT_STEERING_ANGLE_RAD - self.TURN_LEFT_STEERING_ANGLE_RAD) +
                                       self.TURN_LEFT_CMD_STEERING)
@@ -81,9 +84,9 @@ class SteeringPredictor(Node):
 
         cmd_speed = Int16()
         MAX = 100
-        MIN = 70
-        k = 1 if steering_angle_rad < 0 else -1
-        cmd_speed.data = int(k * (MAX - MIN) * steering_angle_rad / 0.3 + MAX)
+        MIN = 80
+        k = 1 if normalized_steering_angle < 0 else -1
+        cmd_speed.data = int(k * (MAX - MIN) * normalized_steering_angle / 1.0 + MAX)
         self.cmd_speed_publisher.publish(cmd_speed)
 
         self.get_logger().info('\n'
@@ -93,17 +96,20 @@ class SteeringPredictor(Node):
                                '       > Inference time [ms]: %f' % (
                                    cmd_steering_angle.data,
                                    cmd_speed.data,
-                                   steering_angle_rad,
+                                   normalized_steering_angle,
                                    time_taken)
                                )
 
         (h, w) = self.steering_wheel_image.shape[:2]
         center = (w // 2, h // 2)
-        rotation_matrix = cv2.getRotationMatrix2D(center, np.rad2deg(steering_angle_rad) * 2, 1.0)
+        rotation_matrix = cv2.getRotationMatrix2D(center, np.rad2deg(normalized_steering_angle) * 1.0, 1.0)
         rotated_steering_wheel = cv2.warpAffine(self.steering_wheel_image, rotation_matrix, (w, h),
                                                 flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT)
+        cv2.putText(background, 'pred steering angle: ' + str(normalized_steering_angle), (30, 190),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
         add_transparent_image(background, rotated_steering_wheel, 30, 30)
-        output_image = self.bridge.cv2_to_imgmsg(background, 'bgr8')
+
+        output_image = self.bridge.cv2_to_imgmsg(background, 'rgb8')
         self.steering_debug_publisher.publish(output_image)
 
 
