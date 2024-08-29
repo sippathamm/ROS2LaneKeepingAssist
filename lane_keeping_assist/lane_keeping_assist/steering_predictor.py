@@ -60,7 +60,7 @@ class SteeringPredictor(Node):
 
         self.session = onnxruntime.InferenceSession(
             os.path.join(get_package_share_directory('lane_keeping_assist'),
-                         'share', 'models', 'steering_predictor_v1.0.12_dev_onnx_128x64_rgb8.onnx'),
+                         'share', 'models', 'steering_predictor_v1.1.17_dev_128x64_rgb8_onnx.onnx'),
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
@@ -92,12 +92,12 @@ class SteeringPredictor(Node):
                                       (self.TURN_RIGHT_CMD_STEERING - self.TURN_LEFT_CMD_STEERING) /
                                       (self.TURN_RIGHT_STEERING_ANGLE_RAD - self.TURN_LEFT_STEERING_ANGLE_RAD) +
                                       self.TURN_LEFT_CMD_STEERING)
-        # self.cmd_steering_publisher.publish(cmd_steering_angle)
+        self.cmd_steering_publisher.publish(cmd_steering_angle)
 
         cmd_speed = Int16()
         k = 1 if normalized_steering_angle < 0 else -1
         cmd_speed.data = int(k * (self.MAX_SPEED - self.MIN_SPEED) * normalized_steering_angle / 1.0 + self.MAX_SPEED)
-        # self.cmd_speed_publisher.publish(cmd_speed)
+        self.cmd_speed_publisher.publish(cmd_speed)
 
         self.get_logger().info('\n'
                                '       > Steering CMD: %d\n'

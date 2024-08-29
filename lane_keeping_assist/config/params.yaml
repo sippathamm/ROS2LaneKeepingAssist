@@ -2,6 +2,7 @@ steering_predictor:
   ros__parameters:
       cmd_steering_topic: "cmd_servo"
       cmd_speed_topic: "cmd_throttle"
+      feedback_speed_topic: "vel_rpt"
       image_topic: "realsense_camera/image_uncompressed"
       max_speed: 100
       min_speed: 80
