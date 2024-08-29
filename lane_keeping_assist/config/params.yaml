@@ -14,4 +14,4 @@ steering_predictor:
 
 test_video_publisher:
     ros__parameters:
-        video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/recorded_timestamp.mp4"
+        video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/ds2/recorded_timestamp.mp4"
