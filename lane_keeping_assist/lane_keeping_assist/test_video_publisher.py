@@ -8,6 +8,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
+from .utils import colors
 import cv2
 import os
 
@@ -18,7 +19,7 @@ class TestVideoPublisher(Node):
 
         self.declare_parameter('video_filepath',
                                os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                            'share', 'test_videos', 'recorded_timestamp.mp4')
+                                            'share', 'test_videos', 'normal_drive.mp4')
                                )
 
         self.VIDEO_FILEPATH = self.get_parameter('video_filepath').get_parameter_value().string_value
@@ -26,7 +27,9 @@ class TestVideoPublisher(Node):
         self.capture = cv2.VideoCapture(self.VIDEO_FILEPATH)
 
         if not self.capture.isOpened():
-            raise RuntimeError('[ERROR] Could not open video file')
+            raise RuntimeError(
+                f'{colors.OKGREEN}[ERROR] Could not open video file.{colors.ENDC}'
+            )
 
         self.video_publisher = self.create_publisher(Image, 'video_raw', 10)
         timer_period = 1 / self.capture.get(cv2.CAP_PROP_FPS)
@@ -37,7 +40,9 @@ class TestVideoPublisher(Node):
         _, frame = self.capture.read()
 
         if not _:
-            raise RuntimeError('[ERROR] Could not read frame')
+            raise RuntimeError(
+                f'{colors.OKGREEN}[ERROR] Could not read frame.{colors.ENDC}'
+            )
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         output_frame = self.bridge.cv2_to_imgmsg(rgb_frame, 'rgb8')

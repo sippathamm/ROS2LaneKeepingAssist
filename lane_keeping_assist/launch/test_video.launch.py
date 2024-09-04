@@ -16,9 +16,7 @@ def generate_launch_description():
             package='lane_keeping_assist',
             executable='steering_predictor',
             parameters=[params,
-                        {
-                            'image_topic': 'video_raw'
-                        }],
+                        {'image_topic': 'video_raw'}],
             output='screen'
         ),
         Node(

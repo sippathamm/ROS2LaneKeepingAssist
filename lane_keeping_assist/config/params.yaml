@@ -4,14 +4,13 @@ steering_predictor:
       cmd_speed_topic: "cmd_throttle"
       feedback_speed_topic: "vel_rpt"
       image_topic: "realsense_camera/image_uncompressed"
+      model_path: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/steering_predictor-128x64-rgb8-onnx.onnx"
       max_speed: 100
       min_speed: 80
-      turn_right_steering_angle_rad: -1.0
-      turn_left_steering_angle_rad: 1.0
       turn_right_cmd_steering: -1000
       turn_left_cmd_steering: 1000
       gain: 1.40
 
 test_video_publisher:
     ros__parameters:
-        video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/ds2/recorded_timestamp.mp4"
+        video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/normal_drive.mp4"
