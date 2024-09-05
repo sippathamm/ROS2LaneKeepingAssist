@@ -16,8 +16,7 @@ setup(
         (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml')),
         (os.path.join('share', package_name, 'share', 'images'), glob.glob('share/images/*.png')),
         (os.path.join('share', package_name, 'share', 'test_videos'), glob.glob('share/test_videos/*.mp4')),
-        (os.path.join('share', package_name, 'share', 'models'), ['share/models/steering_predictor.keras',
-                                                                  'share/models/steering_predictor_onnx.onnx']),
+        (os.path.join('share', package_name, 'share', 'models'), glob.glob('share/models/*.onnx')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -29,6 +28,7 @@ setup(
     entry_points={
         'console_scripts': [
             'steering_predictor = lane_keeping_assist.steering_predictor:main',
+            'test_video_publisher = lane_keeping_assist.test_video_publisher:main',
         ],
     },
 )
