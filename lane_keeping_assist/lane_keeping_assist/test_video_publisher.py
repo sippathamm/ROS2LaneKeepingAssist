@@ -28,7 +28,7 @@ class TestVideoPublisher(Node):
 
         if not self.capture.isOpened():
             raise RuntimeError(
-                f'{colors.OKGREEN}[ERROR] Could not open video file.{colors.ENDC}'
+                f'{colors.ERROR}[ERROR] Could not open video file.{colors.ENDC}'
             )
 
         self.video_publisher = self.create_publisher(Image, 'video_raw', 10)
@@ -41,7 +41,7 @@ class TestVideoPublisher(Node):
 
         if not _:
             raise RuntimeError(
-                f'{colors.OKGREEN}[ERROR] Could not read frame.{colors.ENDC}'
+                f'{colors.ERROR}[ERROR] Could not read frame.{colors.ENDC}'
             )
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

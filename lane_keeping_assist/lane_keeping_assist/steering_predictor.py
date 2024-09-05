@@ -27,7 +27,8 @@ class SteeringPredictor(Node):
         self.declare_parameter('feedback_speed_topic', 'vel_rpt')
         self.declare_parameter('image_topic', 'image_raw')
         self.declare_parameter('model_path', os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                          'share', 'models', 'steering_predictor-128x64-rgb8-onnx.onnx'))
+                                                          'share', 'models',
+                                                          'steering_predictor-128x64-rgb8-onnx.onnx'))
         self.declare_parameter('max_speed', 100)
         self.declare_parameter('min_speed', 80)
         self.declare_parameter('turn_right_cmd_steering', -1000)
@@ -52,7 +53,8 @@ class SteeringPredictor(Node):
 
         # Subscribers
         self.image_subscriber = self.create_subscription(Image, self.IMAGE_TOPIC, self.image_callback, 10)
-        self.feedback_speed_subscriber = self.create_subscription(Float32, self.FEEDBACK_SPEED_TOPIC, self.feedback_speed_callback, 10)
+        self.feedback_speed_subscriber = self.create_subscription(Float32, self.FEEDBACK_SPEED_TOPIC,
+                                                                  self.feedback_speed_callback, 10)
 
         self.bridge = CvBridge()
         self.steering_wheel_image = cv2.imread(os.path.join(get_package_share_directory('lane_keeping_assist'),
@@ -118,6 +120,7 @@ class SteeringPredictor(Node):
                                    time_taken)
                                )
 
+        # Draw debug image section
         rotation_matrix = cv2.getRotationMatrix2D(self.steering_wheel_image_center,
                                                   np.rad2deg(normalized_steering_angle) * 0.5, 1.0)
         rotated_steering_wheel = cv2.warpAffine(self.steering_wheel_image, rotation_matrix,
@@ -128,7 +131,7 @@ class SteeringPredictor(Node):
         cv2.putText(background, 'Current speed [m/s]: ' + str('{:.3f}'.format(self.feedback_speed_ms)), (30, 170),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
-        add_transparent_image(background, rotated_steering_wheel, 30, 50)
+        add_transparent_image(background, rotated_steering_wheel, 30, 40)
 
         output_image = self.bridge.cv2_to_imgmsg(background, 'rgb8')
         self.steering_debug_publisher.publish(output_image)
