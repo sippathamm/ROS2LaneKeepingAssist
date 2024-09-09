@@ -22,8 +22,20 @@ def generate_launch_description():
         ),
         Node(
             package='lane_keeping_assist',
-            executable='steering_predictor',
+            executable='lane_detector_node',
             parameters=[params],
             output='screen',
+        ),
+        Node(
+            package='lane_keeping_assist',
+            executable='steering_predictor_node',
+            parameters=[params],
+            output='screen',
+        ),
+        Node(
+            package='lane_keeping_assist',
+            executable='core_node',
+            parameters=[params],
+            output='screen'
         )
     ])

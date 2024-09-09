@@ -1,16 +1,23 @@
-steering_predictor:
+core_node:
   ros__parameters:
-      cmd_steering_topic: "cmd_servo"
-      cmd_speed_topic: "cmd_throttle"
-      feedback_speed_topic: "vel_rpt"
-      image_topic: "realsense_camera/image_uncompressed"
-      model_path: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/steering_predictor-128x64-rgb8-onnx.onnx"
-      max_speed: 100
-      min_speed: 80
-      turn_right_cmd_steering: -1000
-      turn_left_cmd_steering: 1000
-      gain: 1.40
+    cmd_steering_topic: "cmd_servo"
+    cmd_speed_topic: "cmd_throttle"
+    max_speed: 120
+    min_speed: 80
+    turn_right_cmd_steering: -1000
+    turn_left_cmd_steering: 1000
+    gain: 1.50
 
-test_video_publisher:
-    ros__parameters:
-        video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/normal_drive.mp4"
+steering_predictor_node:
+  ros__parameters:
+    image_topic: "realsense_camera/image_uncompressed"
+    model_path: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/steering_predictor-128x64-rgb8-onnx.onnx"
+
+lane_detector_node:
+  ros__parameters:
+    image_topic: "realsense_camera/image_uncompressed"
+    model_path: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/lane_detector-512x256-rgb8-onnx.onnx"
+
+test_video_publisher_node:
+  ros__parameters:
+    video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/light_reflection.mp4"
