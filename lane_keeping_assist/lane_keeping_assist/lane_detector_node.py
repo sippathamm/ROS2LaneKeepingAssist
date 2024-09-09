@@ -10,7 +10,7 @@ from sensor_msgs.msg import Image
 from custom_msgs.msg import Coefficients
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
-from .models.lane_detector import LaneDetector
+from .models.onnx_model import ONNXModel
 from .utils import colors
 import numpy as np
 import cv2
@@ -42,10 +42,10 @@ class LaneDetectorNode(Node):
         self.debug_image = Image()
 
         self.bridge = CvBridge()
-        self.model = LaneDetector(self.MODEL_PATH,
-                                  'input_1',
-                                  ['bin', 'inst'],
-                                  ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.model = ONNXModel(self.MODEL_PATH,
+                               'input_1',
+                               ['bin', 'inst'],
+                               ['CUDAExecutionProvider', 'CPUExecutionProvider'])
         # self.M = np.float32([
         #     [-3.45040403e-01, -3.04785699e+00, 3.45629957e+02],
         #     [-1.27798502e-16, -3.69174048e+00, 4.20834220e+02],
@@ -74,7 +74,7 @@ class LaneDetectorNode(Node):
 
         X = np.expand_dims(resized_frame, axis=0)
 
-        bin_pred, inst_pred = self.model(X)
+        bin_pred, inst_pred = self.model.predict(X)
 
         # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8) * 255
         inst_pred_thresh = (inst_pred >= 0.5).astype(np.uint8) * 255
@@ -268,14 +268,8 @@ class LaneDetectorNode(Node):
         return left_lane_uw, left_lane_v, right_lane_uw, right_lane_v
 
     def publish_lane_coeffs(self, left_lane_coeffs: np.ndarray, right_lane_coeffs: np.ndarray) -> None:
-        self.lane_coeffs['left'].data = [left_lane_coeffs[0],
-                                         left_lane_coeffs[1],
-                                         left_lane_coeffs[2],
-                                         left_lane_coeffs[3]]
-        self.lane_coeffs['right'].data = [right_lane_coeffs[0],
-                                          right_lane_coeffs[1],
-                                          right_lane_coeffs[2],
-                                          right_lane_coeffs[3]]
+        self.lane_coeffs['left'].data = [coeff for coeff in left_lane_coeffs]
+        self.lane_coeffs['right'].data = [coeff for coeff in right_lane_coeffs]
 
         self.lane_coeffs_publisher['left'].publish(self.lane_coeffs['left'])
         self.lane_coeffs_publisher['right'].publish(self.lane_coeffs['right'])

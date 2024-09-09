@@ -1,7 +1,7 @@
 """
 Author: Sippawit Thammawiset
-Date: September 8, 2024.
-File: lane_detector.py
+Date: September 9, 2024.
+File: onnx_model.py
 """
 
 from typing import Any, Union
@@ -9,13 +9,13 @@ import numpy as np
 import onnxruntime
 
 
-class LaneDetector:
+class ONNXModel:
     def __init__(self,
-                 model_path: str | Any,
+                 model_filepath: str | Any,
                  input_name: str | Any,
                  output_name: Union[list[str], Any],
                  providers: Union[str, Any] = None) -> None:
-        self.model_path = model_path
+        self.model_filepath = model_filepath
         self.input_name = input_name
         self.input_shape = None
         self.output_name = output_name
@@ -31,19 +31,19 @@ class LaneDetector:
     def __load_model(self) -> None:
         try:
             self.session = onnxruntime.InferenceSession(
-                path_or_bytes=self.model_path,
+                path_or_bytes=self.model_filepath,
                 providers=self.providers
             )
         except Exception:
             raise FileNotFoundError(
                 f'The ONNX model file could not be found. '
-                f'Received: model_path={self.model_path}'
+                f'Received: model_filepath={self.model_filepath}'
             )
 
         self.input_shape = self.session.get_inputs()[0].shape
         self.output_shape = self.session.get_outputs()[0].shape
 
-    def __call__(self, X: np.ndarray) -> (np.ndarray, np.ndarray):
+    def predict(self, X: np.ndarray) -> (np.ndarray, np.ndarray):
         if type(X) is not np.ndarray:
             raise TypeError(
                 f'Expected \'X\' argument as type {np.ndarray}. '
@@ -69,6 +69,6 @@ class LaneDetector:
             )
 
         ortvalue = onnxruntime.OrtValue.ortvalue_from_numpy(X.astype('float32'))
-        y1_pred, y2_pred = self.session.run(self.output_name, {self.input_name: ortvalue})
+        y_pred = self.session.run(self.output_name, {self.input_name: ortvalue})
 
-        return y1_pred, y2_pred
+        return y_pred

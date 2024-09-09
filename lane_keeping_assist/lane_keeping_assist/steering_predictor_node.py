@@ -10,7 +10,7 @@ from std_msgs.msg import Float32
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
-from .models.steering_predictor import SteeringPredictor
+from .models.onnx_model import ONNXModel
 from .utils.add_transparent_image import add_transparent_image
 from .utils import colors
 import numpy as np
@@ -44,10 +44,10 @@ class SteeringPredictorNode(Node):
         self.steering_wheel_image = cv2.resize(self.steering_wheel_image, (80, 80))
         self.steering_wheel_image_h, self.steering_wheel_image_w = self.steering_wheel_image.shape[:2]
         self.steering_wheel_image_center = (self.steering_wheel_image_w // 2, self.steering_wheel_image_h // 2)
-        self.model = SteeringPredictor(self.MODEL_PATH,
-                                       'input_1',
-                                       ['predictions'],
-                                       ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.model = ONNXModel(self.MODEL_PATH,
+                               'input_1',
+                               ['predictions'],
+                               ['CUDAExecutionProvider', 'CPUExecutionProvider'])
 
         self.get_logger().info(
             f'{colors.OKGREEN}'
@@ -74,11 +74,11 @@ class SteeringPredictorNode(Node):
         X = np.expand_dims(resized_frame, axis=0)
 
         start_time = time.perf_counter_ns()  # Start time in nanoseconds
-        y_pred = self.model(X)
+        y_pred = self.model.predict(X)
         time_taken = (time.perf_counter_ns() - start_time) / 1_000_000  # Convert nanoseconds to milliseconds
 
-        y_pred = float(y_pred.ravel()[0])
-        steering_angle = np.round(y_pred, 3)
+        steering_angle = np.squeeze(y_pred, axis=0)[0]
+        steering_angle = np.round(steering_angle, 3)
         steering_angle = np.clip(steering_angle, -1.0, 1.0)
 
         self.get_logger().info('\n'
