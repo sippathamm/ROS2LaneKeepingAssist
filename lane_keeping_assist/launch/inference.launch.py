@@ -18,21 +18,21 @@ def generate_launch_description():
         remappings=[
             ('in/compressed', 'realsense_camera/image_compressed'),
             ('out', 'realsense_camera/image_uncompressed')]
-    ),
+    )
 
     lane_detector_node = Node(
         package='lane_keeping_assist',
         executable='lane_detector',
         parameters=[params],
         output='screen',
-    ),
+    )
 
     steering_predictor_node = Node(
         package='lane_keeping_assist',
         executable='steering_predictor',
         parameters=[params],
         output='screen',
-    ),
+    )
 
     core_node = Node(
         package='lane_keeping_assist',
@@ -43,7 +43,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         image_transpot_node,
-        # lane_detector_node,
+        lane_detector_node,
         steering_predictor_node,
         core_node
     ])
