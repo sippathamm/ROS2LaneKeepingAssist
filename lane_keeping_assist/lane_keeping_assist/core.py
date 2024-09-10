@@ -97,23 +97,22 @@ class CoreNode(Node):
         self.get_logger().info(self.state)
 
         # If there are no left and right lanes, stop the car.
-        if (self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and
-            self.lane_coeffs['right'].data == self.ZERO_COEFFS.data) or \
-                (self.lane_coeffs['left'] == Coefficients() and
-                 self.lane_coeffs['right'] == Coefficients()):
-            steering_angle = 0
-
-            self.get_logger().info('[WARNING] Left and right lane are not detected. Stop the car.')
-        elif self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
-                self.state == 'turn_left':
-            steering_angle = 0.5
-        elif self.lane_coeffs['right'].data == self.ZERO_COEFFS.data and \
-                self.state == 'turn_right':
-            steering_angle = -0.5
+        # if (self.lanese_coeffs['left'].data == self.ZERO_COEFFS.data and
+        #     self.lane_coeffs['right'].data == self.ZERO_COEFFS.data) or \
+        #         (self.lane_coeffs['left'] == Coefficients() and
+        #          self.lane_coeffs['right'] == Coefficients()):
+        #     steering_angle = 0
+        #
+        #     self.get_logger().info('[WARNING] Left and right lane are not detected. Stop the car.')
+        # elif self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
+        #         self.state == 'turn_left':
+        #     steering_angle = 0.5
+        # elif self.lane_coeffs['right'].data == self.ZERO_COEFFS.data and \
+        #         self.state == 'turn_right':
+        #     steering_angle = -0.5
 
         cmd_steering = self.steering_angle_to_cmd_steering(steering_angle)
         cmd_speed = self.steering_angle_to_cmd_speed(steering_angle)
-        # cmd_speed = 0
 
         self.get_logger().info('\n'
                                '       > Predicted steering angle: %f\n'

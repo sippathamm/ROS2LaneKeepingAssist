@@ -43,7 +43,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         image_transpot_node,
-        lane_detector_node,
+        # lane_detector_node,
         steering_predictor_node,
         core_node
     ])
