@@ -72,7 +72,7 @@ class LaneDetectorNode(Node):
 
         X = np.expand_dims(resized_frame, axis=0)
 
-        bin_pred, inst_pred = self.model.predict(X)
+        bin_pred, inst_pred = self.model.predict(X)  # Expensive!
 
         # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8) * 255
         inst_pred_thresh = (inst_pred >= 0.6).astype(np.uint8) * 255
@@ -80,6 +80,7 @@ class LaneDetectorNode(Node):
         left_lane_mask = inst_pred_thresh[0, :, :, 1]
         right_lane_mask = inst_pred_thresh[0, :, :, 2]
 
+        # TODO: Modify find_lane_px(...) function
         left_lane_u, left_lane_v, _, _ = self.find_lane_px(left_lane_mask)
         _, _, right_lane_u, right_lane_v = self.find_lane_px(right_lane_mask)
 
@@ -161,7 +162,8 @@ class LaneDetectorNode(Node):
         #     thickness = -1
         #     cv2.circle(birdeye, center_coordinates, radius, color, thickness)
 
-        self.publish_lane_coeffs(left_lane_coeffs, right_lane_coeffs)
+        self.publish_lane_coeffs('left', left_lane_coeffs)
+        self.publish_lane_coeffs('right', right_lane_coeffs)
         self.publish_debug_image(resized_frame)
 
         # debug_image = self.bridge.cv2_to_imgmsg(birdeye, 'rgb8')
@@ -265,12 +267,9 @@ class LaneDetectorNode(Node):
 
         return left_lane_uw, left_lane_v, right_lane_uw, right_lane_v
 
-    def publish_lane_coeffs(self, left_lane_coeffs: np.ndarray, right_lane_coeffs: np.ndarray) -> None:
-        self.lane_coeffs['left'].data = [coeff for coeff in left_lane_coeffs]
-        self.lane_coeffs['right'].data = [coeff for coeff in right_lane_coeffs]
-
-        self.lane_coeffs_publisher['left'].publish(self.lane_coeffs['left'])
-        self.lane_coeffs_publisher['right'].publish(self.lane_coeffs['right'])
+    def publish_lane_coeffs(self, lane: str, lane_coeffs: np.ndarray) -> None:
+        self.lane_coeffs[lane].data = [coeff for coeff in lane_coeffs]
+        self.lane_coeffs_publisher[lane].publish(self.lane_coeffs[lane])
 
     def publish_debug_image(self, debug_image: np.ndarray) -> None:
         self.debug_image = self.bridge.cv2_to_imgmsg(debug_image, 'rgb8')

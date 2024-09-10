@@ -11,7 +11,6 @@ from custom_msgs.msg import Coefficients
 from ament_index_python.packages import get_package_share_directory
 from .utils import colors
 import numpy as np
-import collections
 
 
 class CoreNode(Node):
@@ -50,8 +49,9 @@ class CoreNode(Node):
             'right': Coefficients(),
         }
 
-        self.state = 'straight'
-        self.recent_states = collections.deque([], maxlen=10)
+        # Attributes
+        self.steering_state = 'straight'
+        self.stop = False
 
         self.get_logger().info(
             f'{colors.OKGREEN}> OK.{colors.ENDC}'
@@ -76,53 +76,49 @@ class CoreNode(Node):
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
     def __timer_callback(self) -> None:
-        steering_angle = self.steering_angle.data * self.GAIN
+        steering_angle = self.steering_angle.data
 
-        if steering_angle >= 0.25:
-            self.state = 'turn_left'
-        elif steering_angle <= -0.25:
-            self.state = 'turn_right'
+        if steering_angle >= 0.15:
+            steering_state = 'turn_left'
+        elif steering_angle <= -0.15:
+            steering_state = 'turn_right'
         else:
-            self.state = 'straight'
-
-        # self.recent_states.append(self.state)
-        #
-        # # self.get_logger().info(f'deque: {self.recent_states}')
-        # uniques, counts = np.unique(self.recent_states, return_counts=True)
-        # self.get_logger().info(f'unique: {uniques}, count: {counts}')
-        #
-        # most_count = np.argmax(counts)
-        # self.get_logger().info(f'most count: {uniques[most_count]}')
-
-        self.get_logger().info(self.state)
+            steering_state = 'straight'
 
         # If there are no left and right lanes, stop the car.
-        # if (self.lanese_coeffs['left'].data == self.ZERO_COEFFS.data and
-        #     self.lane_coeffs['right'].data == self.ZERO_COEFFS.data) or \
-        #         (self.lane_coeffs['left'] == Coefficients() and
-        #          self.lane_coeffs['right'] == Coefficients()):
-        #     steering_angle = 0
-        #
-        #     self.get_logger().info('[WARNING] Left and right lane are not detected. Stop the car.')
-        # elif self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
-        #         self.state == 'turn_left':
-        #     steering_angle = 0.5
-        # elif self.lane_coeffs['right'].data == self.ZERO_COEFFS.data and \
-        #         self.state == 'turn_right':
-        #     steering_angle = -0.5
+        if (self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and
+                self.lane_coeffs['right'].data == self.ZERO_COEFFS.data):
+            cmd_steering = 0
+            cmd_speed = 0
 
-        cmd_steering = self.steering_angle_to_cmd_steering(steering_angle)
-        cmd_speed = self.steering_angle_to_cmd_speed(steering_angle)
+            self.get_logger().info('[WARNING] Left and right lane are not detected. Stop the car.')
+        else:
+            if self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
+                    steering_state == 'turn_left':
+                steering_angle = 0.5
+            elif self.lane_coeffs['right'].data == self.ZERO_COEFFS.data and \
+                    steering_state == 'turn_right':
+                steering_angle = -0.5
+
+            steering_angle_enhanced = steering_angle * self.GAIN
+            steering_angle_enhanced = min(max(steering_angle_enhanced, -1.0), 1.0)
+
+            cmd_steering = self.steering_angle_to_cmd_steering(steering_angle_enhanced)
+            cmd_speed = self.steering_angle_to_cmd_speed(steering_angle_enhanced)
 
         self.get_logger().info('\n'
                                '       > Predicted steering angle: %f\n'
+                               '       > Steering state: %s\n'
                                '       > CMD steering: %d\n'
                                '       > CMD speed: %d\n' %
                                (steering_angle,
+                                steering_state,
                                 cmd_steering,
                                 cmd_speed
                                 )
                                )
+
+        self.steering_state = steering_state
 
         self.publish_cmd_steering(cmd_steering)
         self.publish_cmd_speed(cmd_speed)
