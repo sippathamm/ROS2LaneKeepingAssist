@@ -1,20 +1,21 @@
 """
 Author: Sippawit Thammawiset
 Date: September 9, 2024.
-File: onnx_model.py
+File: onnx_inference.py
 """
 
-from typing import Any, Union
+from typing import Any, Union, Optional
 import numpy as np
 import onnxruntime
 
 
-class ONNXModel:
+class ONNXInference:
     def __init__(self,
                  model_filepath: str | Any,
                  input_name: str | Any,
                  output_name: Union[list[str], Any],
-                 providers: Union[str, Any] = None) -> None:
+                 providers: Union[str, Any] = None,
+                 name: Optional[str] = None) -> None:
         self.model_filepath = model_filepath
         self.input_name = input_name
         self.input_shape = None
@@ -25,6 +26,11 @@ class ONNXModel:
             self.providers = ['CPUExecutionProvider']
         else:
             self.providers = providers
+
+        if name is None:
+            self.name = 'ONNXInference'
+        else:
+            self.name = name
 
         self.__load_model()
 
@@ -72,3 +78,6 @@ class ONNXModel:
         y_pred = self.session.run(self.output_name, {self.input_name: ortvalue})
 
         return y_pred
+
+    def __str__(self):
+        return self.name
