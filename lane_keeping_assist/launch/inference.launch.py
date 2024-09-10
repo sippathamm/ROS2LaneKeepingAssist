@@ -11,31 +11,39 @@ def generate_launch_description():
         'params.yaml'
     )
 
+    image_transpot_node = Node(
+        package='image_transport',
+        executable='republish',
+        arguments=['compressed', 'raw'],
+        remappings=[
+            ('in/compressed', 'realsense_camera/image_compressed'),
+            ('out', 'realsense_camera/image_uncompressed')]
+    ),
+
+    lane_detector_node = Node(
+        package='lane_keeping_assist',
+        executable='lane_detector',
+        parameters=[params],
+        output='screen',
+    ),
+
+    steering_predictor_node = Node(
+        package='lane_keeping_assist',
+        executable='steering_predictor',
+        parameters=[params],
+        output='screen',
+    ),
+
+    core_node = Node(
+        package='lane_keeping_assist',
+        executable='core',
+        parameters=[params],
+        output='screen'
+    )
+
     return LaunchDescription([
-        Node(
-            package='image_transport',
-            executable='republish',
-            arguments=['compressed', 'raw'],
-            remappings=[
-                ('in/compressed', 'realsense_camera/image_compressed'),
-                ('out', 'realsense_camera/image_uncompressed')]
-        ),
-        Node(
-            package='lane_keeping_assist',
-            executable='lane_detector_node',
-            parameters=[params],
-            output='screen',
-        ),
-        Node(
-            package='lane_keeping_assist',
-            executable='steering_predictor_node',
-            parameters=[params],
-            output='screen',
-        ),
-        Node(
-            package='lane_keeping_assist',
-            executable='core_node',
-            parameters=[params],
-            output='screen'
-        )
+        image_transpot_node,
+        lane_detector_node,
+        steering_predictor_node,
+        core_node
     ])

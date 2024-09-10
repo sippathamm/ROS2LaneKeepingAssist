@@ -1,4 +1,4 @@
-core_node:
+core:
   ros__parameters:
     cmd_steering_topic: "cmd_servo"
     cmd_speed_topic: "cmd_throttle"
@@ -8,16 +8,14 @@ core_node:
     turn_left_cmd_steering: 1000
     gain: 1.50
 
-steering_predictor_node:
+steering_predictor:
   ros__parameters:
     image_topic: "realsense_camera/image_uncompressed"
-    model_path: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/steering_predictor-128x64-rgb8-onnx.onnx"
 
-lane_detector_node:
+lane_detector:
   ros__parameters:
     image_topic: "realsense_camera/image_uncompressed"
-    model_path: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/lane_detector-512x256-rgb8-onnx.onnx"
 
-test_video_publisher_node:
+test_video_publisher:
   ros__parameters:
     video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/light_reflection.mp4"

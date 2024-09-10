@@ -1,7 +1,7 @@
 """
 Author: Sippawit Thammawiset
 Date: September 9, 2024.
-File: core_node.py
+File: core.py
 """
 
 import rclpy
@@ -17,7 +17,7 @@ class CoreNode(Node):
     ZERO_COEFFS.data = [0.0, 0.0, 0.0, 0.0]
 
     def __init__(self) -> None:
-        super().__init__('core_node')
+        super().__init__('core')
 
         self.__declare_parameters()
         self.__get_parameters()
@@ -48,11 +48,9 @@ class CoreNode(Node):
             'right': Coefficients(),
         }
 
-        # self.get_logger().info(
-        #     f'{colors.OKGREEN}'
-        #     f'> OK'
-        #     f'{colors.ENDC}'
-        # )
+        self.get_logger().info(
+            f'{colors.OKGREEN}> OK.{colors.ENDC}'
+        )
 
     def __declare_parameters(self) -> None:
         self.declare_parameter('cmd_steering_topic', 'cmd_steering')
@@ -73,15 +71,28 @@ class CoreNode(Node):
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
     def __timer_callback(self) -> None:
+        steering_angle = self.steering_angle.data * self.GAIN
+
         # If there are no left and right lanes, stop the car.
         if self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
            self.lane_coeffs['right'].data == self.ZERO_COEFFS.data:
             cmd_steering = 0
             cmd_speed = 0
+
+            self.get_logger().info('[WARNING] Left and right lane are not detected. Stop the car.')
         else:
-            steering_angle = self.steering_angle.data * self.GAIN
             cmd_steering = self.steering_angle_to_cmd_steering(steering_angle)
             cmd_speed = self.steering_angle_to_cmd_speed(steering_angle)
+
+            self.get_logger().info('\n'
+                                   '       > Predicted steering angle: %f\n'
+                                   '       > CMD steering: %d\n'
+                                   '       > CMD speed: %d\n' %
+                                   (steering_angle,
+                                    cmd_steering,
+                                    cmd_speed
+                                    )
+                                   )
 
         self.publish_cmd_steering(cmd_steering)
         self.publish_cmd_speed(cmd_speed)

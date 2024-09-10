@@ -1,7 +1,7 @@
 """
 Author: Sippawit Thammawiset
 Date: August 6, 2024.
-File: test_video_publisher_node.py
+File: test_video_publisher.py
 """
 
 import rclpy
@@ -17,7 +17,7 @@ import os
 
 class TestVideoPublisherNode(Node):
     def __init__(self):
-        super().__init__('test_video_publisher_node')
+        super().__init__('test_video_publisher')
 
         self.declare_parameter('video_filepath',
                                os.path.join(get_package_share_directory('lane_keeping_assist'),

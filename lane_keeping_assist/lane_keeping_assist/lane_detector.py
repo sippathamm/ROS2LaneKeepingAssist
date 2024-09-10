@@ -1,7 +1,7 @@
 """
 Author: Sippawit Thammawiset
 Date: September 5, 2024.
-File: lane_detector_node.py
+File: lane_detector.py
 """
 
 import rclpy
@@ -10,7 +10,7 @@ from sensor_msgs.msg import Image
 from custom_msgs.msg import Coefficients
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
-from .models.onnx_model import ONNXModel
+from onnx_inference import ONNXInference
 from .utils import colors
 import numpy as np
 import cv2
@@ -19,7 +19,7 @@ import os
 
 class LaneDetectorNode(Node):
     def __init__(self) -> None:
-        super().__init__('lane_detector_node')
+        super().__init__('lane_detector')
 
         self.__declare_parameters()
         self.__get_parameters()
@@ -42,10 +42,12 @@ class LaneDetectorNode(Node):
         self.debug_image = Image()
 
         self.bridge = CvBridge()
-        self.model = ONNXModel(self.MODEL_PATH,
-                               'input_1',
-                               ['bin', 'inst'],
-                               ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
+                                                'share', 'models', 'lane_detector-512x256-rgb8-onnx.onnx'),
+                                   'input_1',
+                                   ['bin', 'inst'],
+                                   ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+                                   'LaneDetector')
         # self.M = np.float32([
         #     [-3.45040403e-01, -3.04785699e+00, 3.45629957e+02],
         #     [-1.27798502e-16, -3.69174048e+00, 4.20834220e+02],
@@ -54,21 +56,17 @@ class LaneDetectorNode(Node):
 
         self.get_logger().info(
             f'{colors.OKGREEN}'
-            f'> Initialized {self.model.__class__.__name__} without any errors. Waiting for image...'
+            f'> Initialized {self.model} without any errors. Waiting for image...'
             f'{colors.ENDC}'
         )
 
     def __declare_parameters(self) -> None:
         self.declare_parameter('image_topic', 'image_raw')
-        self.declare_parameter('model_path', os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                          'share', 'models',
-                                                          'lane_detector-512x256-rgb8-onnx.onnx'))
 
     def __get_parameters(self) -> None:
         self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
-        self.MODEL_PATH = self.get_parameter('model_path').get_parameter_value().string_value
 
-    def __image_callback(self, msg):
+    def __image_callback(self, msg) -> None:
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
         resized_frame = cv2.resize(frame, (512, 256))
 
@@ -77,7 +75,7 @@ class LaneDetectorNode(Node):
         bin_pred, inst_pred = self.model.predict(X)
 
         # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8) * 255
-        inst_pred_thresh = (inst_pred >= 0.5).astype(np.uint8) * 255
+        inst_pred_thresh = (inst_pred >= 0.6).astype(np.uint8) * 255
 
         left_lane_mask = inst_pred_thresh[0, :, :, 1]
         right_lane_mask = inst_pred_thresh[0, :, :, 2]
@@ -104,16 +102,16 @@ class LaneDetectorNode(Node):
                 radius = 3
                 color = (255, 0, 0)
                 thickness = -1
-                cv2.circle(frame, center_coordinates, radius, color, thickness)
+                cv2.circle(resized_frame, center_coordinates, radius, color, thickness)
 
-            cv2.putText(frame,
+            cv2.putText(resized_frame,
                         'Left lane coeffs: {}.'.format(left_lane_coeffs),
                         (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 255, 255), 1)
         except TypeError:
             left_lane_coeffs = np.zeros((4,))
 
-            cv2.putText(frame,
+            cv2.putText(resized_frame,
                         'Left lane coeffs: Failed to fit',
                         (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 0, 0), 1)
@@ -127,16 +125,16 @@ class LaneDetectorNode(Node):
                 radius = 3
                 color = (0, 0, 255)
                 thickness = -1
-                cv2.circle(frame, center_coordinates, radius, color, thickness)
+                cv2.circle(resized_frame, center_coordinates, radius, color, thickness)
 
-            cv2.putText(frame,
+            cv2.putText(resized_frame,
                         'Right lane coeffs: {}.'.format(right_lane_coeffs),
                         (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 255, 255), 1)
         except TypeError:
             right_lane_coeffs = np.zeros((4,))
 
-            cv2.putText(frame,
+            cv2.putText(resized_frame,
                         'Right lane coeffs: Failed to fit',
                         (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 0, 0), 1)
@@ -164,7 +162,7 @@ class LaneDetectorNode(Node):
         #     cv2.circle(birdeye, center_coordinates, radius, color, thickness)
 
         self.publish_lane_coeffs(left_lane_coeffs, right_lane_coeffs)
-        self.publish_debug_image(frame)
+        self.publish_debug_image(resized_frame)
 
         # debug_image = self.bridge.cv2_to_imgmsg(birdeye, 'rgb8')
         # self.birdeye_publisher.publish(debug_image)

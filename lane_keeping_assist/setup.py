@@ -7,11 +7,12 @@ package_name = 'lane_keeping_assist'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name, package_name + '/utils', package_name + '/models'],
+    packages=[package_name, package_name + '/utils'],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('lib', package_name), [package_name + '/onnx_inference.py']),
         (os.path.join('share', package_name, 'launch'), glob.glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml')),
         (os.path.join('share', package_name, 'share', 'images'), glob.glob('share/images/*.png')),
@@ -27,10 +28,10 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'core_node = lane_keeping_assist.core_node:main',
-            'lane_detector_node = lane_keeping_assist.lane_detector_node:main',
-            'steering_predictor_node = lane_keeping_assist.steering_predictor_node:main',
-            'test_video_publisher_node = lane_keeping_assist.test_video_publisher_node:main',
+            'core = lane_keeping_assist.core:main',
+            'lane_detector = lane_keeping_assist.lane_detector:main',
+            'steering_predictor = lane_keeping_assist.steering_predictor:main',
+            'test_video_publisher = lane_keeping_assist.test_video_publisher:main',
         ],
     },
 )
