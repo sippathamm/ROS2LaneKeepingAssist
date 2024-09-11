@@ -43,7 +43,7 @@ class LaneDetectorNode(Node):
 
         self.bridge = CvBridge()
         self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                'share', 'models', 'lane_detector-512x256-rgb8-onnx.onnx'),
+                                                'share', 'models', 'lane_detector-512x256-rgb8-onnx-small.onnx'),
                                    'input_1',
                                    ['bin', 'inst'],
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],
@@ -68,7 +68,7 @@ class LaneDetectorNode(Node):
 
     def __image_callback(self, msg) -> None:
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
-        resized_frame = cv2.resize(frame, (512, 256))
+        resized_frame = cv2.resize(frame, self.model.input_shape[-2:-4:-1])
 
         X = np.expand_dims(resized_frame, axis=0)
 
@@ -85,12 +85,12 @@ class LaneDetectorNode(Node):
         _, _, right_lane_u, right_lane_v = self.find_lane_px(right_lane_mask)
 
         try:
-            left_lane_v_sample = np.linspace(left_lane_v.min(), left_lane_v.max(), int(0.005 * len(left_lane_v)))
+            left_lane_v_sample = np.linspace(left_lane_v.min(), left_lane_v.max(), int(0.01 * len(left_lane_v)))
         except ValueError:
             left_lane_v_sample = []
 
         try:
-            right_lane_v_sample = np.linspace(right_lane_v.min(), right_lane_v.max(), int(0.005 * len(right_lane_v)))
+            right_lane_v_sample = np.linspace(right_lane_v.min(), right_lane_v.max(), int(0.01 * len(right_lane_v)))
         except ValueError:
             right_lane_v_sample = []
 
