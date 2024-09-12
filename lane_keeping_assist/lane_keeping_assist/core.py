@@ -59,8 +59,8 @@ class CoreNode(Node):
     def __declare_parameters(self) -> None:
         self.declare_parameter('cmd_steering_topic', 'cmd_steering')
         self.declare_parameter('cmd_speed_topic', 'cmd_speed')
-        self.declare_parameter('max_speed', 100)
-        self.declare_parameter('min_speed', 80)
+        self.declare_parameter('max_cmd_speed', 100)
+        self.declare_parameter('min_cmd_speed', 80)
         self.declare_parameter('turn_right_cmd_steering', -1000)
         self.declare_parameter('turn_left_cmd_steering', 1000)
         self.declare_parameter('gain', 1.0)
@@ -68,8 +68,8 @@ class CoreNode(Node):
     def __get_parameters(self) -> None:
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
         self.CMD_SPEED_TOPIC = self.get_parameter('cmd_speed_topic').get_parameter_value().string_value
-        self.MAX_SPEED = self.get_parameter('max_speed').get_parameter_value().integer_value
-        self.MIN_SPEED = self.get_parameter('min_speed').get_parameter_value().integer_value
+        self.MAX_CMD_SPEED = self.get_parameter('max_cmd_speed').get_parameter_value().integer_value
+        self.MIN_CMD_SPEED = self.get_parameter('min_cmd_speed').get_parameter_value().integer_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
         self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().integer_value
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
@@ -86,7 +86,7 @@ class CoreNode(Node):
         else:
             steering_state = 'straight'
 
-        # If there are no left and right lanes, stop the car.
+        # Stop the car when left and right lanes are not detected.
         if (left_lane_coeffs.data == self.ZERO_COEFFS.data and
             right_lane_coeffs.data == self.ZERO_COEFFS.data) or \
                 (left_lane_coeffs == Coefficients() and
@@ -146,7 +146,7 @@ class CoreNode(Node):
 
     def steering_angle_to_cmd_speed(self, steering_angle: float) -> int:
         k = 1 if steering_angle < 0 else -1
-        return int(k * (self.MAX_SPEED - self.MIN_SPEED) * steering_angle / 1.0 + self.MAX_SPEED)
+        return int(k * (self.MAX_CMD_SPEED - self.MIN_CMD_SPEED) * steering_angle / 1.0 + self.MAX_CMD_SPEED)
 
     def publish_cmd_steering(self, cmd_steering: int) -> None:
         self.cmd_steering.data = cmd_steering
