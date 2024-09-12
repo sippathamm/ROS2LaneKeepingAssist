@@ -2,7 +2,7 @@ core:
   ros__parameters:
     cmd_steering_topic: "cmd_servo"
     cmd_speed_topic: "cmd_throttle"
-    max_speed: 120
+    max_speed: 100
     min_speed: 90
     turn_right_cmd_steering: -1000
     turn_left_cmd_steering: 1000

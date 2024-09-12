@@ -5,7 +5,7 @@ import csv
 
 capture = cv2.VideoCapture(4)  # To use Realsense camera in RGB mode, set index to 4
 target_size = (512, 256)
-fps = capture.get(cv2.CAP_PROP_FPS)
+fps = 30
 
 capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)

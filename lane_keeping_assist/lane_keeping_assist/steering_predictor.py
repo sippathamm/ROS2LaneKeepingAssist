@@ -45,7 +45,7 @@ class SteeringPredictorNode(Node):
         self.steering_wheel_image_h, self.steering_wheel_image_w = self.steering_wheel_image.shape[:2]
         self.steering_wheel_image_center = (self.steering_wheel_image_w // 2, self.steering_wheel_image_h // 2)
         self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                'share', 'models', 'steering_predictor-128x64-rgb8-onnx.onnx'),
+                                                'share', 'models', 'fine_tuned_model-onnx.onnx'),
                                    'input_1',
                                    ['predictions'],
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],

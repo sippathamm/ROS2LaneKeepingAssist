@@ -51,7 +51,6 @@ class CoreNode(Node):
 
         # Attributes
         self.steering_state = 'straight'
-        self.stop = False
 
         self.get_logger().info(
             f'{colors.OKGREEN}> OK.{colors.ENDC}'
@@ -77,6 +76,8 @@ class CoreNode(Node):
 
     def __timer_callback(self) -> None:
         steering_angle = self.steering_angle.data
+        left_lane_coeffs = self.lane_coeffs['left']
+        right_lane_coeffs = self.lane_coeffs['right']
 
         if steering_angle >= 0.15:
             steering_state = 'turn_left'
@@ -86,21 +87,21 @@ class CoreNode(Node):
             steering_state = 'straight'
 
         # If there are no left and right lanes, stop the car.
-        if (self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and
-            self.lane_coeffs['right'].data == self.ZERO_COEFFS.data) or \
-                (self.lane_coeffs['left'] == Coefficients() and
-                 self.lane_coeffs['right'] == Coefficients()):
+        if (left_lane_coeffs.data == self.ZERO_COEFFS.data and
+            right_lane_coeffs.data == self.ZERO_COEFFS.data) or \
+                (left_lane_coeffs == Coefficients() and
+                 right_lane_coeffs == Coefficients()):
             cmd_steering = 0
             cmd_speed = 0
 
-            self.get_logger().info('[WARNING] Left and right lanes are not detected. Stop the car.')
+            self.get_logger().info('[WARNING] No lanes are detected. Stop the car.')
         else:
-            if self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
-                    steering_state == 'turn_left':
-                steering_angle = 0.3
-            elif self.lane_coeffs['right'].data == self.ZERO_COEFFS.data and \
-                    steering_state == 'turn_right':
-                steering_angle = -0.3
+            # if self.lane_coeffs['left'].data == self.ZERO_COEFFS.data and \
+            #         steering_state == 'turn_left':
+            #     steering_angle = 0.3
+            # elif self.lane_coeffs['right'].data == self.ZERO_COEFFS.data and \
+            #         steering_state == 'turn_right':
+            #     steering_angle = -0.3
 
             steering_angle_enhanced = steering_angle * self.GAIN
             steering_angle_enhanced = min(max(steering_angle_enhanced, -1.0), 1.0)
@@ -111,10 +112,14 @@ class CoreNode(Node):
         self.get_logger().info('\n'
                                '       > Predicted steering angle: %f\n'
                                '       > Steering state: %s\n'
+                               '       > Left lane coeffs: %s\n'
+                               '       > Right lane coeffs: %s\n'
                                '       > CMD steering: %d\n'
                                '       > CMD speed: %d\n' %
                                (steering_angle,
                                 steering_state,
+                                left_lane_coeffs.data.tolist(),
+                                right_lane_coeffs.data.tolist(),
                                 cmd_steering,
                                 cmd_speed
                                 )
