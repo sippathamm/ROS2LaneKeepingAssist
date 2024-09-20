@@ -52,21 +52,6 @@ class SteeringPredictorNode(Node):
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],
                                    'SteeringPredictor')
         self.recent_steering_angles = collections.deque([], maxlen=10)
-        self.wheel_base = 0.255
-        self.lane_width = 30
-        self.max_lookahead = 128
-        self.lookahead = np.arange(0, self.max_lookahead, 1)
-        theta = np.deg2rad(180)
-        self.R = np.float32([
-            [np.cos(theta), -np.sin(theta), 0],
-            [np.sin(theta), np.cos(theta), 0],
-            [0, 0, 1]
-        ])
-        self.M_inv = np.float32([
-            [1.03515619e+00, - 8.37734867e-01, - 5.23348999e+00],
-            [-7.07644528e-17, - 2.70874945e-01, 1.13993446e+02],
-            [-6.20776501e-19, - 3.22495330e-03, 1.00000000e+00]
-        ])
 
         self.get_logger().info(
             f'{colors.OKGREEN}'
@@ -108,29 +93,6 @@ class SteeringPredictorNode(Node):
         self.steering_angle_publisher.publish(self.steering_angle)
 
     def update_debug_image(self, background: np.ndarray, steering_angle: float) -> None:
-        height, width, _ = background.shape
-
-        curvature = np.tan(steering_angle * 0.3) / self.wheel_base / 250
-        alpha = np.arcsin(np.clip(curvature * self.lookahead, -0.999, 0.999)) / 2.
-        e = self.lookahead * np.tan(alpha)
-
-        path_image = np.zeros_like(background)
-        for u, v in zip(e, self.lookahead):
-            uvw = np.stack((u, v, 1), axis=0)
-            # print(uvw)
-            uvw_tf = self.R @ uvw
-            uvw_tf /= uvw_tf[2]
-            u_tf, v_tf = uvw_tf[0], uvw_tf[1]
-            cv2.circle(path_image,
-                       (int(u_tf) + (width // 2) - self.lane_width, int(v_tf) + height),
-                       1, (255, 255, 255), -1)
-            cv2.circle(path_image,
-                       (int(u_tf) + (width // 2) + self.lane_width, int(v_tf) + height),
-                       1, (255, 255, 255), -1)
-
-        path_image = cv2.warpPerspective(path_image, self.M_inv, (width, height))
-        cv2.addWeighted(background, 1.0, path_image, 0.3, 0.0, background)
-
         rotation_matrix = cv2.getRotationMatrix2D(self.steering_wheel_image_center,
                                                   np.rad2deg(steering_angle) * 0.5, 1.0)
         rotated_steering_wheel = cv2.warpAffine(self.steering_wheel_image, rotation_matrix,

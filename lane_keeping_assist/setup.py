@@ -28,7 +28,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'core = lane_keeping_assist.core:main',
+            'f110_core = lane_keeping_assist.f110_core:main',
+            'nene_core = lane_keeping_assist.nene_core:main',
             'lane_detector = lane_keeping_assist.lane_detector:main',
             'steering_predictor = lane_keeping_assist.steering_predictor:main',
             'test_video_publisher = lane_keeping_assist.test_video_publisher:main',

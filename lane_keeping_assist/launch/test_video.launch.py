@@ -29,7 +29,7 @@ def generate_launch_description():
 
     core_node = Node(
         package='lane_keeping_assist',
-        executable='core',
+        executable='nene_core',
         parameters=[params],
         output='screen'
     )

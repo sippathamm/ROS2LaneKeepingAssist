@@ -1,12 +1,12 @@
-core:
+nene_core:
   ros__parameters:
-    cmd_steering_topic: "cmd_servo"
-    cmd_speed_topic: "cmd_throttle"
-    max_cmd_speed: 100
-    min_cmd_speed: 80
-    turn_right_cmd_steering: -1000
-    turn_left_cmd_steering: 1000
-    gain: 1.35
+    cmd_steering_topic: "cmd_steering"
+    cmd_speed_topic: "cmd_speed"
+    max_cmd_speed: 0.6
+    min_cmd_speed: 0.4
+    turn_right_cmd_steering: -0.7
+    turn_left_cmd_steering: 0.7
+    gain: 1.00
 
 steering_predictor:
   ros__parameters:
