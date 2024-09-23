@@ -23,7 +23,7 @@ class NeneCoreNode(Node):
         self.__get_parameters()
 
         # Core Timer
-        self.timer = self.create_timer(0.033, self.__timer_callback)
+        self.timer = self.create_timer(0.0167, self.__timer_callback)
 
         # Publishers
         self.cmd_steering_publisher = self.create_publisher(Float32, self.CMD_STEERING_TOPIC, 10)
