@@ -14,63 +14,72 @@ from datetime import datetime
 import cv2
 import csv
 
+
 class CollectDatasetNode(Node):
     def __init__(self) -> None:
         super().__init__('collect_dataset')
 
+        # Core Timer
+        self.timer = self.create_timer(10, self.__timer_callback)
+
         # Subscribers
-        self.fbk_steering_angle_subscriber = self.create_subscription(Float32, 'feedback/steering_angle',
-                                                                  self.__fbk_steering_angle_callback, 10)
-        self.fbk_speed_subscriber = self.create_publisher(Float32, 'feedback/speed',
-                                                          self.__fbk_speed_callback, 10)
+        self.fbk_steering_angle_subscriber = self.create_subscription(Float32, 'feedback/steering_angle', self.__fbk_steering_angle_callback, 10)
+        self.fbk_speed_subscriber = self.create_subscription(Float32, 'feedback/speed', self.__fbk_speed_callback, 10)
         self.image_subscriber = self.create_subscription(Image, 'realsense_camera/image_raw', self.__image_callback, 10)
 
         # Messages
         self.bridge = CvBridge()
+        self.fbk_steering_angle = Float32()
+        self.fbk_speed = Float32()
         self.image = Image()
 
         self.receive_image = False
 
-        csv_file = open('data_log.csv', mode='w', newline='')
-        self.csv_writer = csv.writer(csv_file)
-        self.csv_writer.writerow(['timestamp', 'data'])
+        self.csv_file = open('data_log.csv', mode='w', newline='')
+        self.csv_writer = csv.writer(self.csv_file)
+        self.csv_writer.writerow(['timestamp', 'steering_angle'])
 
         self.video_writer = cv2.VideoWriter('recorded_raw.mp4', cv2.VideoWriter_fourcc(*"MP4V"), 60, (424, 240))
         self.video_writer_timestamp = cv2.VideoWriter('recorded_timestamp.mp4', cv2.VideoWriter_fourcc(*"MP4V"), 60, (424, 240))
 
-    def __fbk_steering_angle_callback(self, msg):
+    def __timer_callback(self):
         if self.receive_image:
-            steering_angle = msg.data
+            steering_angle = float(self.fbk_steering_angle.data)
 
             frame = self.bridge.imgmsg_to_cv2(self.image, 'rgb8')
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             timestamp_frame = rgb_frame.copy()
 
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]  # Timestamp with milliseconds
-            y = round(float(steering_angle), 3)
+            data1 = round(float(steering_angle), 3)
 
             cv2.putText(timestamp_frame, timestamp, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 255, 255), 1,
                         cv2.LINE_AA)
-            
+
             self.video_writer.write(rgb_frame)
             self.video_writer_timestamp.write(timestamp_frame)
             self.csv_writer.writerow([timestamp, y])
 
             self.get_logger().info(
                 f'\n'
-                f'{timestamp} > {y}'
+                f'{timestamp} > {data1}'
             )
-        
-    def __fbk_speed_callback(msg):
-        ...
 
-    def __image_callback(self, msg):
+            self.receive_image = False
+
+    def __fbk_steering_angle_callback(self, msg: Image) -> None:
+        self.fbk_steering_angle = msg
+
+    def __fbk_speed_callback(self, msg: Float32) -> None:
+        self.fbk_speed = msg
+
+    def __image_callback(self, msg: Float32) -> None:
         self.image = msg
         self.receive_image = True
 
-    def destroy_node(self):
-        self.csv_writer.close()
+    def destroy_node(self) -> None:
+        self.csv_file.close()
         self.video_writer.release()
         self.video_writer_timestamp.release()
         return super().destroy_node()
