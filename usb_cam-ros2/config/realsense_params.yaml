@@ -1,15 +1,15 @@
 /**:
     ros__parameters:
       video_device: "/dev/video4"
-      framerate: 30.0
+      framerate: 60.0
       io_method: "mmap"
       frame_id: "camera"
       pixel_format: "yuyv2rgb"  # see usb_cam/supported_formats for list of supported formats
       av_device_format: "YUV422P"
-      image_width: 640
-      image_height: 480
+      image_width: 424
+      image_height: 240
       camera_name: "realsense"
-      camera_info_url: "package://usb_cam/config/realsense_camera_info.yaml"
+      camera_info_url: "package://usb_cam/config/realsense_camera_info_.yaml"
       brightness: -1
       contrast: -1
       saturation: -1
