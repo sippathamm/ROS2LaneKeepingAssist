@@ -17,12 +17,12 @@ class CANInterface : public rclcpp::Node
     CANInterface () : Node("can_interface")
     {
       // Timers
-      this->CANTransmitTimer_ = this->create_wall_timer(0.033ms, std::bind(&CANInterface::CANTransmitTimerCallback, this));
-      this->CANReceiveTimer_ = this->create_wall_timer(20ms, std::bind(&CANInterface::CANReceiveTimerCallback, this));
+      this->CANTransmitTimer_ = this->create_wall_timer(0.0167ms, std::bind(&CANInterface::CANTransmitTimerCallback, this));
+      this->CANReceiveTimer_ = this->create_wall_timer(10ms, std::bind(&CANInterface::CANReceiveTimerCallback, this));
 
       // Publishers
       this->FBKSteeringAnglePublisher_ = this->create_publisher<std_msgs::msg::Float32>("feedback/steering_angle", 10);
-      this->FBKSpeedPublisher = this->create_publisher<std_msgs::msg::Float32>("feedback/speed", 10);
+      this->FBKSpeedPublisher_ = this->create_publisher<std_msgs::msg::Float32>("feedback/speed", 10);
 
       // Subscribers
       this->CMDSteeringSubscriber_ = this->create_subscription<std_msgs::msg::Float32>("cmd_steering",10,
@@ -48,7 +48,7 @@ class CANInterface : public rclcpp::Node
     rclcpp::TimerBase::SharedPtr CANTransmitTimer_;
     rclcpp::TimerBase::SharedPtr CANReceiveTimer_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr FBKSteeringAnglePublisher_;
-    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr FBKSpeedPublisher;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr FBKSpeedPublisher_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr CMDSteeringSubscriber_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr CMDSpeedSubscriber_;
     std_msgs::msg::Float32 CMDSteering_;
@@ -177,9 +177,7 @@ class CANInterface : public rclcpp::Node
 
     void CANReceiveTimerCallback ()
     {
-      auto Frame = VCI_Receive(VCI_USBCAN1, 0, 0, this->CANReceive_, 1, 5);
-
-      if (Frame == 1)
+      if (VCI_Receive(VCI_USBCAN1, 0, 0, this->CANReceive_, 1, 5))
       {
         ClearBuffer(this->RxBuffer_);
 
@@ -222,7 +220,7 @@ class CANInterface : public rclcpp::Node
         FeedbackSpeedMsg.data = this->FeedbackSpeed_;
 
         this->FBKSteeringAnglePublisher_->publish(FeedbackSteeringAngleMsg);
-        this->FBKSpeedPublisher->publish(FeedbackSpeedMsg);
+        this->FBKSpeedPublisher_->publish(FeedbackSpeedMsg);
       }
     }
 
