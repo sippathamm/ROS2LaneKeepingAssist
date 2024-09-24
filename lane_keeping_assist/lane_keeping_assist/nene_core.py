@@ -3,7 +3,7 @@ Author: Sippawit Thammawiset
 Date: September 9, 2024.
 File: f110_core.py
 """
-
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
@@ -15,6 +15,8 @@ from .utils import colors
 class NeneCoreNode(Node):
     ZERO_COEFFS = Coefficients()
     ZERO_COEFFS.data = [0.0, 0.0, 0.0, 0.0]
+    TURN_LEFT_THRESHOLD = -15
+    TURN_RIGHT_THRESHOLD = 15
 
     def __init__(self) -> None:
         super().__init__('nene_core')
@@ -58,19 +60,19 @@ class NeneCoreNode(Node):
     def __declare_parameters(self) -> None:
         self.declare_parameter('cmd_steering_topic', 'cmd_steering')
         self.declare_parameter('cmd_speed_topic', 'cmd_speed')
+        self.declare_parameter('turn_right_cmd_steering', 40.0)
+        self.declare_parameter('turn_left_cmd_steering', -40.0)
         self.declare_parameter('max_cmd_speed', 0.6)
         self.declare_parameter('min_cmd_speed', 0.4)
-        self.declare_parameter('turn_right_cmd_steering', -0.7)
-        self.declare_parameter('turn_left_cmd_steering', 0.7)
         self.declare_parameter('gain', 1.0)
 
     def __get_parameters(self) -> None:
         self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
         self.CMD_SPEED_TOPIC = self.get_parameter('cmd_speed_topic').get_parameter_value().string_value
-        self.MAX_CMD_SPEED = self.get_parameter('max_cmd_speed').get_parameter_value().double_value
-        self.MIN_CMD_SPEED = self.get_parameter('min_cmd_speed').get_parameter_value().double_value
         self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().double_value
         self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().double_value
+        self.MAX_CMD_SPEED = self.get_parameter('max_cmd_speed').get_parameter_value().double_value
+        self.MIN_CMD_SPEED = self.get_parameter('min_cmd_speed').get_parameter_value().double_value
         self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
     def __timer_callback(self) -> None:
@@ -78,9 +80,9 @@ class NeneCoreNode(Node):
         left_lane_coeffs = self.lane_coeffs['left'].data
         right_lane_coeffs = self.lane_coeffs['right'].data
 
-        if steering_angle >= 0.15:
+        if steering_angle <= self.TURN_LEFT_THRESHOLD:
             steering_state = 'turn_left'
-        elif steering_angle <= -0.15:
+        elif steering_angle >= self.TURN_RIGHT_THRESHOLD:
             steering_state = 'turn_right'
         else:
             steering_state = 'straight'
@@ -103,18 +105,20 @@ class NeneCoreNode(Node):
             #     steering_angle = -0.3
 
             steering_angle_enhanced = steering_angle * self.GAIN
-            steering_angle_enhanced = min(max(steering_angle_enhanced, -1.0), 1.0)
+            steering_angle_enhanced = min(max(steering_angle_enhanced, 
+                                              self.TURN_LEFT_CMD_STEERING),
+                                          self.TURN_RIGHT_CMD_STEERING)
 
             cmd_steering = self.steering_angle_to_cmd_steering(steering_angle_enhanced)
             cmd_speed = self.steering_angle_to_cmd_speed(steering_angle_enhanced)
 
         self.get_logger().info('\n'
-                               '       > Predicted steering angle: %f\n'
+                               '       > Predicted steering angle [deg]: %f\n'
                                '       > Steering state: %s\n'
                                '       > Left lane coeffs: %s\n'
                                '       > Right lane coeffs: %s\n'
-                               '       > CMD steering: %f\n'
-                               '       > CMD speed: %f\n' %
+                               '       > CMD steering [deg]: %f\n'
+                               '       > CMD speed [m/s]: %f\n' %
                                (steering_angle,
                                 steering_state,
                                 left_lane_coeffs.tolist(),
@@ -138,15 +142,17 @@ class NeneCoreNode(Node):
     def __right_lane_coeff_callback(self, msg: Coefficients) -> None:
         self.lane_coeffs['right'] = msg
 
-    def steering_angle_to_cmd_steering(self, steering_angle: float) -> float:
-        return float((steering_angle - 1.0) *
-                     (self.TURN_RIGHT_CMD_STEERING - self.TURN_LEFT_CMD_STEERING) /
-                     (-1.0 - 1.0) + self.TURN_LEFT_CMD_STEERING)
+    @staticmethod
+    def steering_angle_to_cmd_steering(steering_angle: float) -> float:
+        return steering_angle
 
     def steering_angle_to_cmd_speed(self, steering_angle: float) -> float:
-        k = 1 if steering_angle < 0 else -1
+        if steering_angle < 0:
+            return float((self.MAX_CMD_SPEED - self.MIN_CMD_SPEED) * steering_angle /
+                         (0 - self.TURN_LEFT_CMD_STEERING) + self.MAX_CMD_SPEED)
 
-        return float(k * (self.MAX_CMD_SPEED - self.MIN_CMD_SPEED) * steering_angle / 1.0 + self.MAX_CMD_SPEED)
+        return float((self.MAX_CMD_SPEED - self.MIN_CMD_SPEED) * steering_angle /
+                     (0 - self.TURN_RIGHT_CMD_STEERING) + self.MAX_CMD_SPEED)
 
     def publish_cmd_steering(self, cmd_steering: float) -> None:
         self.cmd_steering.data = cmd_steering

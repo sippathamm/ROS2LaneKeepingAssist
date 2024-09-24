@@ -68,7 +68,7 @@ class SteeringPredictorNode(Node):
     def __image_callback(self, msg: Image) -> None:
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
         background = frame.copy()
-        roi_frame = frame[int(frame.shape[0] * (100 / 256)):, :]
+        roi_frame = frame[100:-1, 0:-1]
         resized_frame = cv2.resize(roi_frame, self.model.input_shape[-2:-4:-1])
 
         X = np.expand_dims(resized_frame, axis=0)
@@ -79,7 +79,7 @@ class SteeringPredictorNode(Node):
 
         y_pred = float(np.squeeze(y_pred, axis=0)[0])
         y_pred = np.round(y_pred, 3)
-        y_pred = np.clip(y_pred, -1.0, 1.0)
+        y_pred = np.clip(y_pred, -40.0, 40.0)  # Degree
 
         self.recent_steering_angles.append(y_pred)
         mean_y_pred = np.mean(self.recent_steering_angles, axis=0)
@@ -92,9 +92,8 @@ class SteeringPredictorNode(Node):
         self.steering_angle.data = steering_angle
         self.steering_angle_publisher.publish(self.steering_angle)
 
-    def update_debug_image(self, background: np.ndarray, steering_angle: float) -> None:
-        rotation_matrix = cv2.getRotationMatrix2D(self.steering_wheel_image_center,
-                                                  np.rad2deg(steering_angle) * 0.5, 1.0)
+    def update_debug_image(self, background: np.ndarray, steering_angle: float, sensitivity: float = 0.5) -> None:
+        rotation_matrix = cv2.getRotationMatrix2D(self.steering_wheel_image_center, -steering_angle * sensitivity, 1.0)
         rotated_steering_wheel = cv2.warpAffine(self.steering_wheel_image, rotation_matrix,
                                                 (self.steering_wheel_image_w, self.steering_wheel_image_h),
                                                 flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT)
