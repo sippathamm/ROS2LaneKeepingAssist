@@ -42,8 +42,9 @@ class LaneDetectorNode(Node):
         self.debug_image = Image()
 
         self.bridge = CvBridge()
+        model_name = 'lane_detector-512x256-rgb8-onnx.onnx'
         self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                'share', 'models', 'lane_detector-512x256-rgb8-onnx.onnx'),
+                                                'share', 'models', model_name),
                                    'input_1',
                                    ['bin', 'inst'],
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],
@@ -54,6 +55,9 @@ class LaneDetectorNode(Node):
         #     [0.00000000e+00, -1.19056907e-02, 1.00000000e+00]
         # ])
 
+        self.get_logger().info(
+            f'> Using model: {model_name}'
+        )
         self.get_logger().info(
             f'{colors.OKGREEN}'
             f'> Initialized {self.model} without any errors. Waiting for image...'

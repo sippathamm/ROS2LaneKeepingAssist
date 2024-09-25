@@ -45,14 +45,18 @@ class SteeringPredictorNode(Node):
         self.steering_wheel_image = cv2.resize(self.steering_wheel_image, (80, 80))
         self.steering_wheel_image_h, self.steering_wheel_image_w = self.steering_wheel_image.shape[:2]
         self.steering_wheel_image_center = (self.steering_wheel_image_w // 2, self.steering_wheel_image_h // 2)
+        model_name = 'fine_tuned-model-42-onnx.onnx'
         self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                'share', 'models', 'SteeringPredictor_Nene-128x64-rgb8-onnx.onnx'),
+                                                'share', 'models', model_name),
                                    'input_1',
                                    ['predictions'],
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],
                                    'SteeringPredictor')
         self.recent_steering_angles = collections.deque([], maxlen=10)
 
+        self.get_logger().info(
+            f'> Using model: {model_name}'
+        )
         self.get_logger().info(
             f'{colors.OKGREEN}'
             f'> Initialized {self.model} without any errors. Waiting for image...'
