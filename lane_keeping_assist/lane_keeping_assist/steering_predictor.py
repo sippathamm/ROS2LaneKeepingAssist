@@ -45,14 +45,13 @@ class SteeringPredictorNode(Node):
         self.steering_wheel_image = cv2.resize(self.steering_wheel_image, (80, 80))
         self.steering_wheel_image_h, self.steering_wheel_image_w = self.steering_wheel_image.shape[:2]
         self.steering_wheel_image_center = (self.steering_wheel_image_w // 2, self.steering_wheel_image_h // 2)
-        model_name = 'fine_tuned-model-42-onnx.onnx'
-        self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                'share', 'models', model_name),
+        self.model = ONNXInference(self.MODEL_FILEPATH,
                                    'input_1',
                                    ['predictions'],
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],
                                    'SteeringPredictor')
         self.recent_steering_angles = collections.deque([], maxlen=10)
+        model_name = self.MODEL_FILEPATH.split('/')[-1]
 
         self.get_logger().info(
             f'> Using model: {model_name}'
@@ -64,12 +63,17 @@ class SteeringPredictorNode(Node):
         )
 
     def __declare_parameters(self) -> None:
+        self.declare_parameter('model_filepath',
+                               os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
+                                            'SteeringPredictor_Nene-128x64-rgb8-onnx.onnx'))
         self.declare_parameter('image_topic', 'image_raw')
 
     def __get_parameters(self) -> None:
+        self.MODEL_FILEPATH = self.get_parameter('model_filepath').get_parameter_value().string_value
         self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
 
-    def __image_callback(self, msg: Image) -> None:
+    def __image_callback(self,
+                         msg: Image) -> None:
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
         background = frame.copy()
         roi_frame = frame[100:-1, 0:-1]
@@ -92,11 +96,15 @@ class SteeringPredictorNode(Node):
         self.update_debug_image(background, mean_y_pred)
         self.publish_debug_image(background)
 
-    def publish_steering_angle(self, steering_angle: float) -> None:
+    def publish_steering_angle(self,
+                               steering_angle: float) -> None:
         self.steering_angle.data = steering_angle
         self.steering_angle_publisher.publish(self.steering_angle)
 
-    def update_debug_image(self, background: np.ndarray, steering_angle: float, sensitivity: float = 0.5) -> None:
+    def update_debug_image(self,
+                           background: np.ndarray,
+                           steering_angle: float,
+                           sensitivity: float = 0.5) -> None:
         rotation_matrix = cv2.getRotationMatrix2D(self.steering_wheel_image_center, -steering_angle * sensitivity, 1.0)
         rotated_steering_wheel = cv2.warpAffine(self.steering_wheel_image, rotation_matrix,
                                                 (self.steering_wheel_image_w, self.steering_wheel_image_h),
@@ -106,7 +114,8 @@ class SteeringPredictorNode(Node):
 
         add_transparent_image(background, rotated_steering_wheel, 30, 40)
 
-    def publish_debug_image(self, debug_image: np.ndarray) -> None:
+    def publish_debug_image(self,
+                            debug_image: np.ndarray) -> None:
         self.debug_image = self.bridge.cv2_to_imgmsg(debug_image, 'rgb8')
         self.debug_image_publisher.publish(self.debug_image)
 
