@@ -49,11 +49,7 @@ class LaneDetectorNode(Node):
                                    ['bin', 'inst'],
                                    ['CUDAExecutionProvider', 'CPUExecutionProvider'],
                                    'LaneDetector')
-        # self.M = np.float32([
-        #     [-3.45040403e-01, -3.04785699e+00, 3.45629957e+02],
-        #     [-1.27798502e-16, -3.69174048e+00, 4.20834220e+02],
-        #     [0.00000000e+00, -1.19056907e-02, 1.00000000e+00]
-        # ])
+        model_name = self.MODEL_FILEPATH.split('/')[-1]
 
         self.get_logger().info(
             f'> Using model: {model_name}'
@@ -65,18 +61,23 @@ class LaneDetectorNode(Node):
         )
 
     def __declare_parameters(self) -> None:
+        self.declare_parameter('model_filepath',
+                               os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
+                                            'lane_detector-512x256-rgb8-onnx.onnx'))
         self.declare_parameter('image_topic', 'image_raw')
 
     def __get_parameters(self) -> None:
+        self.MODEL_FILEPATH = self.get_parameter('model_filepath').get_parameter_value().string_value
         self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
 
-    def __image_callback(self, msg) -> None:
+    def __image_callback(self,
+                         msg: Image) -> None:
         frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
         resized_frame = cv2.resize(frame, self.model.input_shape[-2:-4:-1])
 
         X = np.expand_dims(resized_frame, axis=0)
 
-        bin_pred, inst_pred = self.model.predict(X)  # Expensive!
+        bin_pred, inst_pred = self.model.predict(X)  # Still expensive!
 
         # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8) * 255
         inst_pred_thresh = (inst_pred >= 0.6).astype(np.uint8) * 255
@@ -144,54 +145,9 @@ class LaneDetectorNode(Node):
                         (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 0, 0), 1)
 
-        # left_lane_stack = np.stack((left_lane_fit_u, left_lane_v_sample, np.ones(len(left_lane_fit_u))), axis=0)
-        # right_lane_stack = np.stack((right_lane_fit_u, right_lane_v_sample, np.ones(len(right_lane_fit_u))), axis=0)
-        #
-        # left_lane_tf = self.M @ left_lane_stack
-        # left_lane_tf /= left_lane_tf[2]
-        # right_lane_tf = self.M @ right_lane_stack
-        # right_lane_tf /= right_lane_tf[2]
-        #
-        # birdeye = np.zeros_like(resized_frame)
-        # for i in range(left_lane_tf.shape[1]):
-        #     center_coordinates = (int(left_lane_tf[0, i]), int(left_lane_tf[1, i]))
-        #     radius = 2
-        #     color = (255, 255, 255)
-        #     thickness = -1
-        #     cv2.circle(birdeye, center_coordinates, radius, color, thickness)
-        # for i in range(right_lane_tf.shape[1]):
-        #     center_coordinates = (int(right_lane_tf[0, i]), int(right_lane_tf[1, i]))
-        #     radius = 2
-        #     color = (255, 255, 255)
-        #     thickness = -1
-        #     cv2.circle(birdeye, center_coordinates, radius, color, thickness)
-
         self.publish_lane_coeffs('left', left_lane_coeffs)
         self.publish_lane_coeffs('right', right_lane_coeffs)
         self.publish_debug_image(resized_frame)
-
-        # debug_image = self.bridge.cv2_to_imgmsg(birdeye, 'rgb8')
-        # self.birdeye_publisher.publish(debug_image)
-        #
-        # path = Path()
-        # path.header.stamp = self.get_clock().now().to_msg()
-        # path.header.frame_id = 'base_link'
-        # for i in range(left_lane_tf.shape[1]):
-        #     pose = PoseStamped()
-        #     pose.pose.position.x = (left_lane_tf[0, i]) * 0.05
-        #     pose.pose.position.y = (left_lane_tf[1, i]) * 0.05
-        #     path.poses.append(pose)
-        # self.left_bound_publisher.publish(path)
-        #
-        # path = Path()
-        # path.header.stamp = self.get_clock().now().to_msg()
-        # path.header.frame_id = 'base_link'
-        # for i in range(right_lane_tf.shape[1]):
-        #     pose = PoseStamped()
-        #     pose.pose.position.x = (right_lane_tf[0, i]) * 0.05
-        #     pose.pose.position.y = (right_lane_tf[1, i]) * 0.05
-        #     path.poses.append(pose)
-        # self.right_bound_publisher.publish(path)
 
     @staticmethod
     def find_lane_px(image: np.ndarray,
@@ -271,11 +227,14 @@ class LaneDetectorNode(Node):
 
         return left_lane_uw, left_lane_v, right_lane_uw, right_lane_v
 
-    def publish_lane_coeffs(self, lane: str, lane_coeffs: np.ndarray) -> None:
+    def publish_lane_coeffs(self,
+                            lane: str,
+                            lane_coeffs: np.ndarray) -> None:
         self.lane_coeffs[lane].data = [coeff for coeff in lane_coeffs]
         self.lane_coeffs_publisher[lane].publish(self.lane_coeffs[lane])
 
-    def publish_debug_image(self, debug_image: np.ndarray) -> None:
+    def publish_debug_image(self,
+                            debug_image: np.ndarray) -> None:
         self.debug_image = self.bridge.cv2_to_imgmsg(debug_image, 'rgb8')
         self.debug_image_publisher.publish(self.debug_image)
 
