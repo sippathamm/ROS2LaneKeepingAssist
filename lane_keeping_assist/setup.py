@@ -29,6 +29,7 @@ setup(
     entry_points={
         'console_scripts': [
             'collect_dataset = lane_keeping_assist.collect_dataset:main',
+            'cv_cam = lane_keeping_assist.cv_cam:main',
             'f110_core = lane_keeping_assist.f110_core:main',
             'nene_core = lane_keeping_assist.nene_core:main',
             'lane_detector = lane_keeping_assist.lane_detector:main',
