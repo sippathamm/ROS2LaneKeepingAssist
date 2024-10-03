@@ -10,7 +10,7 @@ nene_core:
 
 steering_predictor:
   ros__parameters:
-    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/SteeringPredictor-Dev-42-onnx.onnx"
+    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-SteeringPredictor-42.onnx"
     image_topic: "realsense_camera/image_uncompressed"
 
 lane_detector:
