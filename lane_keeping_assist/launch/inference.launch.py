@@ -11,15 +11,6 @@ def generate_launch_description():
         'params.yaml'
     )
 
-    image_transpot_node = Node(
-        package='image_transport',
-        executable='republish',
-        arguments=['compressed', 'raw'],
-        remappings=[
-            ('in/compressed', 'realsense_camera/image_compressed'),
-            ('out', 'realsense_camera/image_uncompressed')]
-    )
-
     lane_detector_node = Node(
         package='lane_keeping_assist',
         executable='lane_detector',
@@ -34,16 +25,7 @@ def generate_launch_description():
         output='screen',
     )
 
-    core_node = Node(
-        package='lane_keeping_assist',
-        executable='nene_core',
-        parameters=[params],
-        output='screen'
-    )
-
     return LaunchDescription([
-        image_transpot_node,
         lane_detector_node,
         steering_predictor_node,
-        core_node
     ])

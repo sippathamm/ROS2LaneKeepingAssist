@@ -58,7 +58,7 @@ class ONNXInference:
 
         if len(X.shape) != 4:
             raise ValueError(
-                f'Expected 4-rank with (batch_size, height, width, channels) for {self.input_name}. '
+                f'Expected 4-rank tensor with (batch_size, height, width, channels) for {self.input_name}. '
                 f'Received: {X.shape}'
             )
 

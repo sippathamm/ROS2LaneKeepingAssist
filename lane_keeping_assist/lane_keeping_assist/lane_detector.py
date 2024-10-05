@@ -6,8 +6,8 @@ File: lane_detector.py
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
-from custom_msgs.msg import Coefficients
+from sensor_msgs.msg import Image, CompressedImage
+from coefficient_msg.msg import Coefficients
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
 from onnx_inference import ONNXInference
@@ -21,8 +21,18 @@ class LaneDetectorNode(Node):
     def __init__(self) -> None:
         super().__init__('lane_detector')
 
-        self.__declare_parameters()
-        self.__get_parameters()
+        # ROS Parameters
+        self.declare_parameter('model_filepath',
+                               os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
+                                            'lane_detector-512x256-rgb8-onnx.onnx'))
+        self.declare_parameter('compressed_image_topic', 'image_raw/compressed')
+        self.declare_parameter('degree', 2)
+        self.declare_parameter('silence', True)
+
+        self.MODEL_FILEPATH = self.get_parameter('model_filepath').get_parameter_value().string_value
+        self.IMAGE_TOPIC = self.get_parameter('compressed_image_topic').get_parameter_value().string_value
+        self.DEGREE = self.get_parameter('degree').get_parameter_value().integer_value
+        self.SILENCE = self.get_parameter('silence').get_parameter_value().bool_value
 
         # Publishers
         self.lane_coeffs_publisher = {
@@ -32,9 +42,9 @@ class LaneDetectorNode(Node):
         self.debug_image_publisher = self.create_publisher(Image, 'lane_detector/debug_image', 10)
 
         # Subscribers
-        self.image_subscriber = self.create_subscription(Image, self.IMAGE_TOPIC, self.__image_callback, 10)
+        self.image_subscriber = self.create_subscription(CompressedImage, self.IMAGE_TOPIC, self.__image_callback, 10)
 
-        # Messages
+        # Attributes
         self.lane_coeffs = {
             'left': Coefficients(),
             'right': Coefficients()
@@ -42,65 +52,58 @@ class LaneDetectorNode(Node):
         self.debug_image = Image()
 
         self.bridge = CvBridge()
-        model_name = 'lane_detector-512x256-rgb8-onnx.onnx'
-        self.model = ONNXInference(os.path.join(get_package_share_directory('lane_keeping_assist'),
-                                                'share', 'models', model_name),
-                                   'input_1',
-                                   ['bin', 'inst'],
-                                   ['CUDAExecutionProvider', 'CPUExecutionProvider'],
-                                   'LaneDetector')
-        model_name = self.MODEL_FILEPATH.split('/')[-1]
 
+        model_name = self.MODEL_FILEPATH.split('/')[-1]
         self.get_logger().info(
             f'> Using model: {model_name}'
         )
-        self.get_logger().info(
-            f'{colors.OKGREEN}'
-            f'> Initialized {self.model} without any errors. Waiting for image...'
-            f'{colors.ENDC}'
-        )
 
-    def __declare_parameters(self) -> None:
-        self.declare_parameter('model_filepath',
-                               os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
-                                            'lane_detector-512x256-rgb8-onnx.onnx'))
-        self.declare_parameter('image_topic', 'image_raw')
+        try:
+            self.model = ONNXInference(self.MODEL_FILEPATH,
+                                       'input_1',
+                                       ['bin', 'inst'],
+                                       ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+                                       'LaneDetector')
 
-    def __get_parameters(self) -> None:
-        self.MODEL_FILEPATH = self.get_parameter('model_filepath').get_parameter_value().string_value
-        self.IMAGE_TOPIC = self.get_parameter('image_topic').get_parameter_value().string_value
+            self.get_logger().info(
+                f'{colors.OKGREEN}'
+                f'> Initialized {self.__class__.__name__} without any errors. Waiting for image...'
+                f'{colors.ENDC}'
+            )
+        except Exception as e:
+            self.get_logger().info(
+                f'{colors.ERROR}'
+                f'> Failed to initialize {self.__class__.__name__}. '
+                f'Reason: "{e}"'
+                f'{colors.ENDC}'
+            )
+            self.destroy_node()
 
     def __image_callback(self,
-                         msg: Image) -> None:
-        frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
+                         msg: CompressedImage) -> None:
+        frame = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
         resized_frame = cv2.resize(frame, self.model.input_shape[-2:-4:-1])
+        rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
 
-        X = np.expand_dims(resized_frame, axis=0)
+        X = np.expand_dims(rgb_frame, axis=0)
 
-        bin_pred, inst_pred = self.model.predict(X)  # Still expensive!
+        bin_pred, inst_pred = self.model.predict(X)  # Expensive!
 
-        # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8) * 255
-        inst_pred_thresh = (inst_pred >= 0.6).astype(np.uint8) * 255
+        # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8)
+        inst_pred_thresh = (inst_pred >= 0.5).astype(np.uint8)
 
         left_lane_mask = inst_pred_thresh[0, :, :, 1]
         right_lane_mask = inst_pred_thresh[0, :, :, 2]
 
-        # TODO: Modify find_lane_px(...) function
-        left_lane_u, left_lane_v, _, _ = self.find_lane_px(left_lane_mask)
-        _, _, right_lane_u, right_lane_v = self.find_lane_px(right_lane_mask)
+        # TODO: Optimize find_mask_px(...) function
+        left_lane_u, left_lane_v, _, _ = self.find_mask_px(left_lane_mask)
+        _, _, right_lane_u, right_lane_v = self.find_mask_px(right_lane_mask)
+
+        left_lane_v_sample = self.get_v_sample(left_lane_v)
+        right_lane_v_sample = self.get_v_sample(right_lane_v)
 
         try:
-            left_lane_v_sample = np.linspace(left_lane_v.min(), left_lane_v.max(), int(0.005 * len(left_lane_v)))
-        except ValueError:
-            left_lane_v_sample = []
-
-        try:
-            right_lane_v_sample = np.linspace(right_lane_v.min(), right_lane_v.max(), int(0.005 * len(right_lane_v)))
-        except ValueError:
-            right_lane_v_sample = []
-
-        try:
-            left_lane_coeffs = np.polyfit(left_lane_v, left_lane_u, 3)
+            left_lane_coeffs = np.polyfit(left_lane_v, left_lane_u, self.DEGREE)
             left_lane_fit_u = np.poly1d(left_lane_coeffs)(left_lane_v_sample)
 
             for u, v in zip(left_lane_fit_u, left_lane_v_sample):
@@ -108,22 +111,22 @@ class LaneDetectorNode(Node):
                 radius = 3
                 color = (255, 0, 0)
                 thickness = -1
-                cv2.circle(resized_frame, center_coordinates, radius, color, thickness)
+                cv2.circle(rgb_frame, center_coordinates, radius, color, thickness)
 
-            cv2.putText(resized_frame,
+            cv2.putText(rgb_frame,
                         'Left lane coeffs: {}.'.format(left_lane_coeffs),
                         (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 255, 255), 1)
         except TypeError:
-            left_lane_coeffs = np.zeros((4,))
+            left_lane_coeffs = np.zeros((self.DEGREE,))
 
-            cv2.putText(resized_frame,
+            cv2.putText(rgb_frame,
                         'Left lane coeffs: Failed to fit',
                         (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 0, 0), 1)
 
         try:
-            right_lane_coeffs = np.polyfit(right_lane_v, right_lane_u, 3)
+            right_lane_coeffs = np.polyfit(right_lane_v, right_lane_u, self.DEGREE)
             right_lane_fit_u = np.poly1d(right_lane_coeffs)(right_lane_v_sample)
 
             for u, v in zip(right_lane_fit_u, right_lane_v_sample):
@@ -131,29 +134,41 @@ class LaneDetectorNode(Node):
                 radius = 3
                 color = (0, 0, 255)
                 thickness = -1
-                cv2.circle(resized_frame, center_coordinates, radius, color, thickness)
+                cv2.circle(rgb_frame, center_coordinates, radius, color, thickness)
 
-            cv2.putText(resized_frame,
+            cv2.putText(rgb_frame,
                         'Right lane coeffs: {}.'.format(right_lane_coeffs),
                         (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 255, 255), 1)
         except TypeError:
-            right_lane_coeffs = np.zeros((4,))
+            right_lane_coeffs = np.zeros((self.DEGREE,))
 
-            cv2.putText(resized_frame,
+            cv2.putText(rgb_frame,
                         'Right lane coeffs: Failed to fit',
                         (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (255, 0, 0), 1)
 
+        if not self.SILENCE:
+            self.get_logger().info('\n'
+                                   '       > Left lane coeffs: %s\n'
+                                   '       > Right lane coeffs: %s\n' %
+                                   (left_lane_coeffs.tolist(),
+                                    right_lane_coeffs.tolist())
+                                   )
+
         self.publish_lane_coeffs('left', left_lane_coeffs)
         self.publish_lane_coeffs('right', right_lane_coeffs)
-        self.publish_debug_image(resized_frame)
+        self.publish_debug_image(rgb_frame)
 
     @staticmethod
-    def find_lane_px(image: np.ndarray,
+    def find_mask_px(image: np.ndarray,
                      n_windows: int = 9,
                      margin: int = 100,
                      min_px: int = 50) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+        """
+        Legacy version
+        """
+        
         # Take a histogram of the bottom half of the image
         histogram = np.sum(image[image.shape[0] // 2:, :], axis=0)
 
@@ -227,10 +242,20 @@ class LaneDetectorNode(Node):
 
         return left_lane_uw, left_lane_v, right_lane_uw, right_lane_v
 
+    @staticmethod
+    def get_v_sample(v: np.ndarray,
+                     scaling_factor: float = 0.005) -> np.ndarray:
+        try:
+            v_sample = np.linspace(v.min(), v.max(), int(scaling_factor * len(v)))
+        except ValueError:
+            v_sample = []
+
+        return v_sample
+
     def publish_lane_coeffs(self,
                             lane: str,
-                            lane_coeffs: np.ndarray) -> None:
-        self.lane_coeffs[lane].data = [coeff for coeff in lane_coeffs]
+                            coeffs: np.ndarray) -> None:
+        self.lane_coeffs[lane].data = [coeff for coeff in coeffs]
         self.lane_coeffs_publisher[lane].publish(self.lane_coeffs[lane])
 
     def publish_debug_image(self,
