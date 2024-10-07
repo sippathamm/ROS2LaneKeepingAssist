@@ -9,14 +9,14 @@ collect_dataset:
 
 lane_detector:
   ros__parameters:
-    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/lane_detector-512x256-rgb8-onnx.onnx"
+    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-lane_detector-240x424-rgb8.onnx"
     compressed_image_topic: "image_raw/compressed"
     degree: 2
     silence: False
 
 steering_predictor:
   ros__parameters:
-    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-SteeringPredictor-42.onnx"
+    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-steering_predictor-240x424-rgb8.onnx"
     compressed_image_topic: "image_raw/compressed"
     min_steering_angle: -40.0
     max_steering_angle: 40.0
