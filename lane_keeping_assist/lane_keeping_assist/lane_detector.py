@@ -11,6 +11,7 @@ from coefficient_msg.msg import Coefficients
 from cv_bridge import CvBridge
 from ament_index_python.packages import get_package_share_directory
 from onnx_inference import ONNXInference
+from typing import Tuple
 from .utils import colors
 import numpy as np
 import cv2
@@ -24,7 +25,7 @@ class LaneDetectorNode(Node):
         # ROS Parameters
         self.declare_parameter('model_filepath',
                                os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
-                                            'lane_detector-512x256-rgb8-onnx.onnx'))
+                                            'onnx-lane_detector-240x424-rgb8.onnx'))
         self.declare_parameter('compressed_image_topic', 'image_raw/compressed')
         self.declare_parameter('degree', 2)
         self.declare_parameter('silence', True)
@@ -87,17 +88,16 @@ class LaneDetectorNode(Node):
 
         X = np.expand_dims(rgb_frame, axis=0)
 
-        bin_pred, inst_pred = self.model.predict(X)  # Expensive!
+        bin_seg, inst_seg = self.model.predict(X)  # Expensive!
 
-        # bin_pred_thresh = (bin_pred >= 0.5).astype(np.uint8)
-        inst_pred_thresh = (inst_pred >= 0.5).astype(np.uint8)
+        # bin_seg_thresh = (bin_seg >= 0.5).astype(np.uint8)
+        inst_seg_thresh = (inst_seg >= 0.5).astype(np.uint8)
 
-        left_lane_mask = inst_pred_thresh[0, :, :, 1]
-        right_lane_mask = inst_pred_thresh[0, :, :, 2]
+        left_lane_mask = inst_seg_thresh[0, :, :, 1]
+        right_lane_mask = inst_seg_thresh[0, :, :, 2]
 
-        # TODO: Optimize find_mask_px(...) function
-        left_lane_u, left_lane_v, _, _ = self.find_mask_px(left_lane_mask)
-        _, _, right_lane_u, right_lane_v = self.find_mask_px(right_lane_mask)
+        left_lane_u, left_lane_v = self.find_mask_pixels(left_lane_mask)
+        right_lane_u, right_lane_v = self.find_mask_pixels(right_lane_mask)
 
         left_lane_v_sample = self.get_v_sample(left_lane_v)
         right_lane_v_sample = self.get_v_sample(right_lane_v)
@@ -161,86 +161,50 @@ class LaneDetectorNode(Node):
         self.publish_debug_image(rgb_frame)
 
     @staticmethod
-    def find_mask_px(image: np.ndarray,
-                     n_windows: int = 9,
-                     margin: int = 100,
-                     min_px: int = 50) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+    def find_mask_pixels(image: np.ndarray,
+                         n_windows: int = 9,
+                         margin: int = 100,
+                         min_px: int = 50) -> Tuple[np.ndarray, np.ndarray]:
         """
         Legacy version
         """
-        
-        # Take a histogram of the bottom half of the image
-        histogram = np.sum(image[image.shape[0] // 2:, :], axis=0)
 
-        # Find the peak of the left and right halves of the histogram
-        # These will be the starting point for the left and right lines
-        midpoint = np.int32(histogram.shape[0] // 2)
-        leftx_base = np.argmax(histogram[:midpoint])
-        rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+        height, width = image.shape
 
-        # Choose the number of sliding windows
-        nwindows = n_windows
-        # Set the width of the windows +/- margin
-        margin = margin
-        # Set minimum number of pixels found to recenter window
-        minpix = min_px
+        histogram = np.sum(image[height // 2:, :], axis=0)
+        peak = np.argmax(histogram)  # Find the peak the histogram
 
-        # Set height of windows - based on nwindows above and image shape
-        window_height = np.int32(image.shape[0] // nwindows)
-        # Identify the x and v positions of all nonzero pixels in the image
+        window_height = np.int32(height // n_windows)
+        current = peak
+
         nonzero = image.nonzero()
-        nonzeroy = np.array(nonzero[0])
-        nonzerox = np.array(nonzero[1])
+        nonzero_v = np.array(nonzero[0])
+        nonzero_u = np.array(nonzero[1])
 
-        # Current positions to be updated later for each window in nwindows
-        leftx_current = leftx_base
-        rightx_current = rightx_base
+        indices = []
 
-        # Create empty lists to receive left and right lane pixel indices
-        left_lane_inds = []
-        right_lane_inds = []
+        for window in range(n_windows):
+            window_v_min = height - (window + 1) * window_height
+            window_v_max = height - window * window_height
+            window_u_min = current - margin
+            window_u_max = current + margin
 
-        # Step through the windows one by one
-        for window in range(nwindows):
-            # Identify window boundaries in x and v (and right and left)
-            win_y_low = image.shape[0] - (window + 1) * window_height
-            win_y_high = image.shape[0] - window * window_height
-            win_xleft_low = leftx_current - margin
-            win_xleft_high = leftx_current + margin
-            win_xright_low = rightx_current - margin
-            win_xright_high = rightx_current + margin
+            index = ((nonzero_v >= window_v_min) & (nonzero_v < window_v_max) &
+                     (nonzero_u >= window_u_min) & (nonzero_u < window_u_max)).nonzero()[0]
 
-            # Identify the nonzero pixels in x and v within the window #
-            good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
-                              (nonzerox >= win_xleft_low) & (nonzerox < win_xleft_high)).nonzero()[0]
-            good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
-                               (nonzerox >= win_xright_low) & (nonzerox < win_xright_high)).nonzero()[0]
+            indices.append(index)
 
-            # Append these indices to the lists
-            left_lane_inds.append(good_left_inds)
-            right_lane_inds.append(good_right_inds)
+            if len(indices) > min_px:
+                current = np.int32(np.mean(nonzero_u[indices]))
 
-            # If you found > minpix pixels, recenter next window on their mean position
-            if len(good_left_inds) > minpix:
-                leftx_current = np.int32(np.mean(nonzerox[good_left_inds]))
-            if len(good_right_inds) > minpix:
-                rightx_current = np.int32(np.mean(nonzerox[good_right_inds]))
-
-        # Concatenate the arrays of indices (previously was a list of lists of pixels)
         try:
-            left_lane_inds = np.concatenate(left_lane_inds)
-            right_lane_inds = np.concatenate(right_lane_inds)
+            indices = np.concatenate(indices)
         except ValueError:
-            # Avoids an error if the above is not implemented fully
             pass
 
-        # Extract left and right line pixel positions
-        left_lane_uw = nonzerox[left_lane_inds]
-        left_lane_v = nonzeroy[left_lane_inds]
-        right_lane_uw = nonzerox[right_lane_inds]
-        right_lane_v = nonzeroy[right_lane_inds]
+        u, v = nonzero_u[indices], nonzero_v[indices]
 
-        return left_lane_uw, left_lane_v, right_lane_uw, right_lane_v
+        return u, v
 
     @staticmethod
     def get_v_sample(v: np.ndarray,
