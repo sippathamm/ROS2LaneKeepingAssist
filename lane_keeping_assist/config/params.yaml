@@ -1,23 +1,33 @@
+collect_dataset:
+  ros__parameters:
+    steering_topic: 'feedback/steering'
+    velocity_topic: 'feedback/velocity'
+    image_topic: 'realsense_camera/image_raw'
+    width: 512
+    height: 256
+    frequency: 30
+
 nene_core:
   ros__parameters:
     cmd_steering_topic: "cmd_steering"
-    cmd_speed_topic: "cmd_speed"
+    cmd_velocity_topic: "cmd_velocity"
     turn_right_cmd_steering: 40.0
     turn_left_cmd_steering: -40.0
     max_cmd_speed: 0.6
     min_cmd_speed: 0.4
     gain: 1.00
 
-steering_predictor:
-  ros__parameters:
-    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-SteeringPredictor-42.onnx"
-    image_topic: "realsense_camera/image_uncompressed"
-
 lane_detector:
   ros__parameters:
-    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/lane_detector-512x256-rgb8-onnx.onnx"
-    image_topic: "realsense_camera/image_uncompressed"
+    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-lane_detector-240x424-rgb8.onnx"
+    compressed_image_topic: "realsense_camera/image_compressed"
+    degree: 2
+    silence: True
 
-test_video_publisher:
+steering_predictor:
   ros__parameters:
-    video_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/test_videos/fast_drive_Nene.mp4"
+    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-steering_predictor-240x424-rgb8.onnx"
+    compressed_image_topic: "realsense_camera/image_compressed"
+    max_steering_angle: 40.0
+    min_steering_angle: -40.0
+    silence: True

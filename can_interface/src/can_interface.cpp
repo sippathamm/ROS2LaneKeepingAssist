@@ -17,18 +17,18 @@ class CANInterface : public rclcpp::Node
     CANInterface () : Node("can_interface")
     {
       // Timers
-      this->CANTransmitTimer_ = this->create_wall_timer(0.0167ms, std::bind(&CANInterface::CANTransmitTimerCallback, this));
-      this->CANReceiveTimer_ = this->create_wall_timer(10ms, std::bind(&CANInterface::CANReceiveTimerCallback, this));
+      this->CANTransmitTimer_ = this->create_wall_timer(0.0167ms, [this] { CANTransmitTimerCallback(); });
+      this->CANReceiveTimer_ = this->create_wall_timer(10ms, [this] { CANReceiveTimerCallback(); });
 
       // Publishers
-      this->FBKSteeringAnglePublisher_ = this->create_publisher<std_msgs::msg::Float32>("feedback/steering_angle", 10);
-      this->FBKSpeedPublisher_ = this->create_publisher<std_msgs::msg::Float32>("feedback/speed", 10);
+      this->FBKSteeringAnglePublisher_ = this->create_publisher<std_msgs::msg::Float32>("feedback/steering", 10);
+      this->FBKVelocityPublisher_ = this->create_publisher<std_msgs::msg::Float32>("feedback/velocity", 10);
 
       // Subscribers
       this->CMDSteeringSubscriber_ = this->create_subscription<std_msgs::msg::Float32>("cmd_steering",10,
         std::bind(&CANInterface::CMDSteeringCallback, this, _1));
-      this->CMDSpeedSubscriber_ = this->create_subscription<std_msgs::msg::Float32>("cmd_speed",10,
-        std::bind(&CANInterface::CMDSpeedCallback, this, _1));
+      this->CMDVelocitySubscriber_ = this->create_subscription<std_msgs::msg::Float32>("cmd_velocity",10,
+        std::bind(&CANInterface::CMDVelocityCallback, this, _1));
 
       this->CANInitialize();
       this->CANTransmitSetup();
@@ -39,24 +39,23 @@ class CANInterface : public rclcpp::Node
     {
       VCI_ResetCAN(VCI_USBCAN1, 0, 0);
       VCI_CloseDevice(VCI_USBCAN1,0);
-      
-      delete[] this->TxBuffer_;
-      delete[] this->RxBuffer_;
     }
 
   private:
     rclcpp::TimerBase::SharedPtr CANTransmitTimer_;
     rclcpp::TimerBase::SharedPtr CANReceiveTimer_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr FBKSteeringAnglePublisher_;
-    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr FBKSpeedPublisher_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr FBKVelocityPublisher_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr CMDSteeringSubscriber_;
-    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr CMDSpeedSubscriber_;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr CMDVelocitySubscriber_;
     std_msgs::msg::Float32 CMDSteering_;
-    std_msgs::msg::Float32 CMDSpeed_;
+    std_msgs::msg::Float32 CMDVelocity_;
+    std_msgs::msg::Float32 FeedbackSteeringAngleMsg_;
+    std_msgs::msg::Float32 FeedbackVelocityMsg_;
     float FeedbackSteeringAngle_ = 0.0;
-    float FeedbackSpeed_ = 0.0;
-    unsigned char *TxBuffer_ = new unsigned char [8];
-    unsigned char *RxBuffer_ = new unsigned char [8];
+    float FeedbackVelocity_ = 0.0;
+    unsigned char TxBuffer_[8] = {};
+    unsigned char RxBuffer_[8] = {};
     VCI_CAN_OBJ CANTransmit_[1] {};
     VCI_CAN_OBJ CANReceive_[1] {};
 
@@ -143,13 +142,13 @@ class CANInterface : public rclcpp::Node
     void CANTransmitTimerCallback ()
     {
       float CMDSteering = this->CMDSteering_.data;
-      float CMDSpeed = this->CMDSpeed_.data;
+      float CMDVelocity = this->CMDVelocity_.data;
       const auto *CMDSteeringPointer = reinterpret_cast<unsigned char*>(&CMDSteering);
-      const auto *CMDSpeedPointer = reinterpret_cast<unsigned char*>(&CMDSpeed);
-      this->TxBuffer_[0] = CMDSpeedPointer[0];
-      this->TxBuffer_[1] = CMDSpeedPointer[1];
-      this->TxBuffer_[2] = CMDSpeedPointer[2];
-      this->TxBuffer_[3] = CMDSpeedPointer[3];
+      const auto *CMDVelocityPointer = reinterpret_cast<unsigned char*>(&CMDVelocity);
+      this->TxBuffer_[0] = CMDVelocityPointer[0];
+      this->TxBuffer_[1] = CMDVelocityPointer[1];
+      this->TxBuffer_[2] = CMDVelocityPointer[2];
+      this->TxBuffer_[3] = CMDVelocityPointer[3];
       this->TxBuffer_[4] = CMDSteeringPointer[0];
       this->TxBuffer_[5] = CMDSteeringPointer[1];
       this->TxBuffer_[6] = CMDSteeringPointer[2];
@@ -164,14 +163,14 @@ class CANInterface : public rclcpp::Node
       {
         // RCLCPP_INFO(this->get_logger(), "\n"
         //                                 "       > CMD Steering: %f\n"
-        //                                 "       > CMD Speed: %f",
+        //                                 "       > CMD Velocity: %f",
         //                                 CMDSteering,
-        //                                 CMDSpeed);
-        // RCLCPP_INFO(this->get_logger(), "> Sent OK.");
+        //                                 CMDVelocity);
+        // RCLCPP_INFO(this->get_logger(), "> Transmit OK.");
       }
       else
       {
-        RCLCPP_INFO(this->get_logger(), "> Sent failed.");
+        RCLCPP_INFO(this->get_logger(), "> Transmit failed.");
       }
     }
 
@@ -202,25 +201,23 @@ class CANInterface : public rclcpp::Node
         this->RxBuffer_[7] = this->CANReceive_[0].Data[7];
 
         // this->FeedbackSteeringAngle_ = *(float *) &this->RxBuffer_[4];
-        // this->FeedbackSpeed_ = *(float *) &this->RxBuffer_[0];
+        // this->FeedbackVelocity_ = *(float *) &this->RxBuffer_[0];
 
         this->FeedbackSteeringAngle_ = *reinterpret_cast<float*>(&this->RxBuffer_[4]);
-        this->FeedbackSpeed_ = *reinterpret_cast<float*>(&this->RxBuffer_[0]);
+        this->FeedbackVelocity_ = *reinterpret_cast<float*>(&this->RxBuffer_[0]);
 
         RCLCPP_INFO(this->get_logger(), "\n"
                                         "       > Feedback steering angle [deg]: %f\n"
                                         "       > Feedback speed [m/s]: %f",
                                         this->FeedbackSteeringAngle_,
-                                        this->FeedbackSpeed_);
+                                        this->FeedbackVelocity_);
 
-        std_msgs::msg::Float32 FeedbackSteeringAngleMsg;
-        FeedbackSteeringAngleMsg.data = this->FeedbackSteeringAngle_;
 
-        std_msgs::msg::Float32 FeedbackSpeedMsg;
-        FeedbackSpeedMsg.data = this->FeedbackSpeed_;
+        this->FeedbackSteeringAngleMsg_.data = this->FeedbackSteeringAngle_;
+        this->FeedbackVelocityMsg_.data = this->FeedbackVelocity_;
 
-        this->FBKSteeringAnglePublisher_->publish(FeedbackSteeringAngleMsg);
-        this->FBKSpeedPublisher_->publish(FeedbackSpeedMsg);
+        this->FBKSteeringAnglePublisher_->publish(FeedbackSteeringAngleMsg_);
+        this->FBKVelocityPublisher_->publish(FeedbackVelocityMsg_);
       }
     }
 
@@ -234,9 +231,9 @@ class CANInterface : public rclcpp::Node
       this->CMDSteering_ = Message;
     }
 
-    void CMDSpeedCallback (const std_msgs::msg::Float32 &Message)
+    void CMDVelocityCallback (const std_msgs::msg::Float32 &Message)
     {
-      this->CMDSpeed_ = Message;
+      this->CMDVelocity_ = Message;
     }
 };
 

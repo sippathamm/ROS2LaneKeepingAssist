@@ -7,7 +7,7 @@ File: f110_core.py
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int16, Float32
-from custom_msgs.msg import Coefficients
+from coefficient_msg.msg import Coefficients
 from ament_index_python.packages import get_package_share_directory
 from .utils import colors
 
@@ -19,11 +19,27 @@ class F110CoreNode(Node):
     def __init__(self) -> None:
         super().__init__('f110_core')
 
-        self.__declare_parameters()
-        self.__get_parameters()
+        # ROS Parameter
+        self.declare_parameter('cmd_steering_topic', 'cmd_steering')
+        self.declare_parameter('cmd_speed_topic', 'cmd_speed')
+        self.declare_parameter('max_cmd_speed', 100)
+        self.declare_parameter('min_cmd_speed', 80)
+        self.declare_parameter('turn_right_cmd_steering', -1000)
+        self.declare_parameter('turn_left_cmd_steering', 1000)
+        self.declare_parameter('gain', 1.0)
+
+        self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
+        self.CMD_SPEED_TOPIC = self.get_parameter('cmd_speed_topic').get_parameter_value().string_value
+        self.MAX_CMD_SPEED = self.get_parameter('max_cmd_speed').get_parameter_value().integer_value
+        self.MIN_CMD_SPEED = self.get_parameter('min_cmd_speed').get_parameter_value().integer_value
+        self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
+        self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().integer_value
+        self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
         # Core Timer
-        self.timer = self.create_timer(0.033, self.__timer_callback)
+        FPS = 60
+        timer_period = 1 / FPS
+        self.timer = self.create_timer(timer_period, self.__timer_callback)
 
         # Publishers
         self.cmd_steering_publisher = self.create_publisher(Int16, self.CMD_STEERING_TOPIC, 10)
@@ -54,24 +70,6 @@ class F110CoreNode(Node):
         self.get_logger().info(
             f'{colors.OKGREEN}> F110 Core OK.{colors.ENDC}'
         )
-
-    def __declare_parameters(self) -> None:
-        self.declare_parameter('cmd_steering_topic', 'cmd_steering')
-        self.declare_parameter('cmd_speed_topic', 'cmd_speed')
-        self.declare_parameter('max_cmd_speed', 100)
-        self.declare_parameter('min_cmd_speed', 80)
-        self.declare_parameter('turn_right_cmd_steering', -1000)
-        self.declare_parameter('turn_left_cmd_steering', 1000)
-        self.declare_parameter('gain', 1.0)
-
-    def __get_parameters(self) -> None:
-        self.CMD_STEERING_TOPIC = self.get_parameter('cmd_steering_topic').get_parameter_value().string_value
-        self.CMD_SPEED_TOPIC = self.get_parameter('cmd_speed_topic').get_parameter_value().string_value
-        self.MAX_CMD_SPEED = self.get_parameter('max_cmd_speed').get_parameter_value().integer_value
-        self.MIN_CMD_SPEED = self.get_parameter('min_cmd_speed').get_parameter_value().integer_value
-        self.TURN_RIGHT_CMD_STEERING = self.get_parameter('turn_right_cmd_steering').get_parameter_value().integer_value
-        self.TURN_LEFT_CMD_STEERING = self.get_parameter('turn_left_cmd_steering').get_parameter_value().integer_value
-        self.GAIN = self.get_parameter('gain').get_parameter_value().double_value
 
     def __timer_callback(self) -> None:
         steering_angle = self.steering_angle.data
