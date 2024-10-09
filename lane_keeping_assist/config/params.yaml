@@ -26,7 +26,7 @@ lane_detector:
 
 steering_predictor:
   ros__parameters:
-    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-steering_predictor-240x424-rgb8.onnx"
+    model_filepath: "/home/parallels/dev_ws/src/lane_keeping_assist/share/models/onnx-SteeringPredictor-18-240x424-rgb8.onnx"
     compressed_image_topic: "realsense_camera/image_compressed"
     max_steering_angle: 40.0
     min_steering_angle: -40.0

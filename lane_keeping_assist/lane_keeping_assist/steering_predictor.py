@@ -26,7 +26,7 @@ class SteeringPredictorNode(Node):
         # ROS Parameters
         self.declare_parameter('model_filepath',
                                os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
-                                            'onnx-steering_predictor-240x424-rgb8.onnx'))
+                                            'onnx-SteeringPredictor-18-240x424-rgb8.onnx'))
         self.declare_parameter('compressed_image_topic', 'image_raw/compressed')
         self.declare_parameter('max_steering_angle', 40.0)
         self.declare_parameter('min_steering_angle', -40.0)
