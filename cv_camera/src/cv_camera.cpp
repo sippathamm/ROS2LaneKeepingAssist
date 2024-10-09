@@ -49,7 +49,10 @@ int main (int argc, char *argv[])
 
     if (!Frame.empty())
     {
-      ImageMessage = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", Frame).toImageMsg();
+      cv::Mat ResizedFrame;
+      cv::resize(Frame, ResizedFrame, cv::Size(500, 500), cv::INTER_LINEAR);
+
+      ImageMessage = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", ResizedFrame).toImageMsg();
       ImagePublisher.publish(ImageMessage);
     }
 
