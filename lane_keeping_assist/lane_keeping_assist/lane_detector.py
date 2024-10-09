@@ -25,7 +25,7 @@ class LaneDetectorNode(Node):
         # ROS Parameters
         self.declare_parameter('model_filepath',
                                os.path.join(get_package_share_directory('lane_keeping_assist'), 'share', 'models',
-                                            'onnx-lane_detector-240x424-rgb8.onnx'))
+                                            'onnx-LaneDetector-11.onnx'))
         self.declare_parameter('compressed_image_topic', 'image_raw/compressed')
         self.declare_parameter('degree', 2)
         self.declare_parameter('silence', True)
